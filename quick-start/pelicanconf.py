@@ -27,7 +27,7 @@ LINKS = (
 
 # Social widget
 SOCIAL = (
-    ("LinkedIn", "www.linkedin.com/in/owen-peckham-26a038203"),
+    ("LinkedIn", "https://www.linkedin.com/in/owen-peckham-26a038203"),
     )
 
 DEFAULT_PAGINATION = False
