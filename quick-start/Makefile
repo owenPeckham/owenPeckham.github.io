@@ -72,7 +72,7 @@ publish:
 
 	rm -rf ../docs/*
 
-	pelican content
+	"$(PELICAN)" "$(INPUTDIR)" -o "$(OUTPUTDIR)" -s "$(PUBLISHCONF)" $(PELICANOPTS)
 	
 	mv output/* ../docs/
 
