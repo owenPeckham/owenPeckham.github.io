@@ -1,0 +1,3 @@
+[submodule "quick-start/~/pelican-themes"]
+	path = quick-start/~/pelican-themes
+	url = https://github.com/getpelican/pelican-themes
