@@ -1,5 +1,3 @@
-import os
-
 AUTHOR = 'Owen Peckham'
 SITENAME = 'Owen Peckham'
 SITEURL = ""
