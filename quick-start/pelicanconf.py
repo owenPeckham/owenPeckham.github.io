@@ -23,7 +23,7 @@ ARTICLE_EXCLUDES = ['extra']
 
 STATIC_PATHS = ['extra']
 EXTRA_PATH_METADATA = {
-    'extra/gd-setup.html': {'path': 'gd-setup.html'},
+    'extra/gd_setup.html': {'path': 'gd_setup.html'},
 }
 
 # Blogroll
