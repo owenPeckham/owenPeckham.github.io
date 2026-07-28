@@ -19,6 +19,8 @@ TRANSLATION_FEED_ATOM = None
 AUTHOR_FEED_ATOM = None
 AUTHOR_FEED_RSS = None
 
+ARTICLE_EXCLUDES = ['extra']
+
 STATIC_PATHS = ['extra']
 EXTRA_PATH_METADATA = {
     'extra/gd-setup.html': {'path': 'gd-setup.html'},

@@ -1,0 +1,2257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>PCLS Generative Design Setup</title>
+    <style>
+        :root {
+            --bg-body: #1e1e1e;
+            --bg-sidebar: #252526;
+            --text-main: #eee;
+            --text-muted: #aaa;
+            --border: #3e3e42;
+            --bg-tab-header: #2d2d30;
+            --bg-tab-hover: #333;
+            --bg-input: #333337;
+            --bg-card: #2d2d30;
+            --bg-card-group: #1a1a1a;
+            --bg-header: #333;
+            --bg-header-hover: #444;
+            --bg-list: #222;
+            --bg-item-hover: #2a2a2a;
+        }
+
+        body.light-mode {
+            --bg-body: #e8e8e8;
+            --bg-sidebar: #f5f5f5;
+            --text-main: #222;
+            --text-muted: #555;
+            --border: #ccc;
+            --bg-tab-header: #e0e0e0;
+            --bg-tab-hover: #d5d5d5;
+            --bg-input: #fff;
+            --bg-card: #f9f9f9;
+            --bg-card-group: #fff;
+            --bg-header: #eaeaea;
+            --bg-header-hover: #dfdfdf;
+            --bg-list: #f0f0f0;
+            --bg-item-hover: #e5e5e5;
+        }
+
+        body { margin: 0; overflow: hidden; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; background: var(--bg-body); color: var(--text-main); transition: background 0.3s, color 0.3s; }
+        #sidebar { width: 400px; background: var(--bg-sidebar); display: flex; flex-direction: column; box-sizing: border-box; height: 100vh; border-right: 1px solid var(--border); z-index: 100; transition: background 0.3s; }
+        
+        /* Tabs Styling */
+        .tab-header { display: flex; background: var(--bg-tab-header); border-bottom: 1px solid var(--border); }
+        .tab-btn { flex: 1; padding: 12px 0; text-align: center; cursor: pointer; font-weight: bold; font-size: 0.9rem; color: var(--text-muted); border-bottom: 2px solid transparent; transition: 0.2s; }
+        .tab-btn:hover { color: var(--text-main); background: var(--bg-tab-hover); }
+        .tab-btn.active { color: #0e639c; border-bottom-color: #0e639c; background: var(--bg-body); }
+        
+        .tab-content { flex: 1; padding: 20px; overflow-y: auto; display: none; }
+        .tab-content.active { display: block; }
+        
+        h2 { margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid var(--border); padding-bottom: 8px; color: #4facfe; }
+        h3 { font-size: 0.95rem; margin-top: 15px; margin-bottom: 10px; color: var(--text-muted); border-bottom: 1px dashed var(--border); padding-bottom: 5px; }
+        
+        .control-group { margin-bottom: 12px; }
+        .param-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; align-items: center; }
+        .flex-row { display: flex; gap: 5px; align-items: center; }
+        
+        label { display: block; font-size: 0.8rem; color: var(--text-muted); margin-bottom: 2px; position: relative;}
+        input[type="text"], input[type="number"], select { width: 100%; padding: 5px; box-sizing: border-box; background: var(--bg-input); border: 1px solid #aaa; color: var(--text-main); border-radius: 3px; font-size: 0.85rem;}
+        body:not(.light-mode) input[type="text"], body:not(.light-mode) input[type="number"], body:not(.light-mode) select { border: 1px solid #555; }
+        
+        input.error { border-color: #e74c3c !important; background: #4a2323 !important; }
+        body.light-mode input.error { background: #fadbd8 !important; }
+        input[type="checkbox"] { margin-right: 8px; }
+        
+        button { width: 100%; padding: 8px; background: #0e639c; color: white; border: none; border-radius: 3px; cursor: pointer; font-weight: bold; font-size: 0.9rem; margin-bottom: 5px;}
+        button:hover { background: #1177bb; }
+        button:disabled { background: #aaa; color: #555; cursor: not-allowed; }
+        body:not(.light-mode) button:disabled { background: #444; color: #888; }
+        
+        /* Tooltip Styling */
+        .info-icon { display: inline-block; margin-left: 5px; color: #4facfe; cursor: help; font-weight: bold; font-size: 0.75rem; }
+        .global-tooltip { visibility: hidden; position: fixed; background-color: var(--bg-card); color: var(--text-main); width: 260px; padding: 10px; border-radius: 4px; border: 1px solid var(--border); box-shadow: 0px 4px 10px rgba(0,0,0,0.5); font-size: 0.75rem; z-index: 9999; opacity: 0; transition: opacity 0.2s; pointer-events: none; line-height: 1.4; }
+        .global-tooltip.show { visibility: visible; opacity: 1; }
+        
+        /* Tree UI */
+        .group-card { background: var(--bg-card-group); margin-bottom: 10px; border-radius: 4px; border-left: 4px solid #f39c12; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+        .group-header { padding: 8px; cursor: pointer; display: flex; justify-content: space-between; font-weight: bold; font-size: 0.9rem; background: var(--bg-header);}
+        .group-header:hover { background: var(--bg-header-hover); }
+
+        .region-card { background: var(--bg-card); margin-bottom: 10px; border-radius: 4px; border-left: 4px solid #888; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+        .region-card.active { border-left-color: #4facfe; }
+        .region-card.in-group { margin-left: 10px; margin-bottom: 0; border-bottom: 1px solid var(--border); border-left: none; box-shadow: none; }
+        .region-header { padding: 8px; cursor: pointer; display: flex; justify-content: space-between; font-weight: bold; font-size: 0.9rem; align-items:center; background: var(--bg-header); }
+        .region-header:hover { background: var(--bg-header-hover); }
+        .type-preserve { color: #4caf50; }
+        .type-obstacle { color: #f44336; }
+        .primitive-list { padding-left: 10px; background: var(--bg-list); }
+        .primitive-item { padding: 6px 8px; border-bottom: 1px solid var(--border); cursor: pointer; font-size: 0.85rem; display: flex; justify-content: space-between; border-left: 3px solid transparent; align-items:center;}
+        .primitive-item:hover { background: var(--bg-item-hover); }
+        .primitive-item.active { border-left-color: #f39c12; background: var(--bg-input); }
+        
+        .delete-btn { background: #c53030; padding: 2px 6px; width: auto; margin: 0; font-size: 0.75rem; color: white; border: none; }
+        .delete-btn:hover { background: #e53e3e; }
+        .dup-btn { background: #27ae60; padding: 2px 6px; width: auto; margin: 0 5px 0 0; font-size: 0.75rem; color: white; border: none; }
+        .dup-btn:hover { background: #2ecc71; }
+        
+        /* Tags */
+        .tag-c { background: #2980b9; color: white; padding: 2px 5px; border-radius: 3px; font-size: 0.7rem; margin-left: 5px; }
+        .tag-l { background: #8e44ad; color: white; padding: 2px 5px; border-radius: 3px; font-size: 0.7rem; margin-left: 5px; }
+        
+        /* Properties Panel */
+        #propertiesPanel { background: var(--bg-sidebar); padding: 15px; border-radius: 5px; margin-top: 15px; border: 1px solid var(--border); display: none; }
+        .xyz-inputs { display: grid; grid-template-columns: 20px 1fr 20px 1fr 20px 1fr; align-items: center; gap: 5px; margin-bottom: 10px; }
+        .xyz-inputs span { color: var(--text-muted); font-size: 0.8rem; text-align: right; }
+        .btn-group { display: flex; gap: 5px; margin-bottom: 10px; }
+        .btn-toggle { background: var(--bg-input); border: 1px solid var(--border); color: var(--text-main); }
+        .btn-toggle.active { background: #0e639c; border-color: #0e639c; color: white; }
+
+        /* Viewport & Widgets */
+        #viewport { flex-grow: 1; position: relative; }
+        #axesWidget { position: absolute; bottom: 20px; left: 20px; width: 150px; height: 150px; pointer-events: none; z-index: 5; }
+        #exportFooter { padding: 15px; background: var(--bg-sidebar); border-top: 1px solid var(--border); position:relative; }
+        
+        /* Floating Viewport Buttons */
+        #topRightBtns { position: absolute; top: 15px; right: 15px; display: flex; gap: 10px; z-index: 10; }
+        #themeToggleBtn { width: auto; margin: 0; box-shadow: 0 4px 6px rgba(0,0,0,0.3); background: #f1c40f; color: #222; border: none; padding: 8px 12px; border-radius: 3px; cursor: pointer; font-weight: bold; }
+        #themeToggleBtn:hover { filter: brightness(1.1); }
+        #homeCameraBtn { width: auto; margin: 0; box-shadow: 0 4px 6px rgba(0,0,0,0.3); padding: 8px 12px; border: none; border-radius: 3px; cursor: pointer; font-weight: bold; background: #0e639c; color: white; }
+        #homeCameraBtn:hover { background: #1177bb; }
+        
+        #undoBtn { position: absolute; bottom: 15px; right: 15px; width: auto; background: #e74c3c; box-shadow: 0 4px 6px rgba(0,0,0,0.3); z-index: 10; font-weight:bold; padding: 8px; color: white; border: none; border-radius: 3px; cursor: pointer; margin: 0; }
+        #undoBtn:hover { background: #c0392b; }
+        #helpBtn { position: absolute; top: 15px; left: 15px; width: 35px; height: 35px; border-radius: 50%; font-size: 1.2rem; background: #4facfe; border: none; font-weight: bold; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.3); z-index: 10; padding: 0; color: #1e1e1e; }
+        #helpBtn:hover { background: #2980b9; color: white; }
+
+        /* Modal / Help Popup */
+        .modal { display: none; position: fixed; z-index: 9999; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.6); backdrop-filter: blur(2px); }
+        .modal-content { background-color: var(--bg-sidebar); margin: 5% auto; padding: 25px; border: 1px solid var(--border); border-radius: 6px; width: 80%; max-width: 650px; color: var(--text-main); box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        .close { color: var(--text-muted); float: right; font-size: 28px; font-weight: bold; cursor: pointer; line-height: 1; }
+        .close:hover, .close:focus { color: var(--text-main); text-decoration: none; }
+        .modal h2 { margin-top: 0; border-bottom: 2px solid #4facfe; padding-bottom: 10px; }
+        .modal h3 { color: #4facfe; border: none; margin-bottom: 5px; }
+        .modal p, .modal li { font-size: 0.9rem; line-height: 1.5; color: var(--text-main); }
+        .modal ul { margin-top: 5px; padding-left: 20px; }
+    </style>
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/",
+                "three-csg-ts": "https://esm.sh/three-csg-ts@3.2.0?external=three"
+            }
+        }
+    </script>
+</head>
+<body>
+
+    <div id="sidebar">
+        <!-- Tabs Header -->
+        <div class="tab-header">
+            <div class="tab-btn active" data-target="tabDomain">Domain</div>
+            <div class="tab-btn" data-target="tabAnalysis">Analysis</div>
+            <div class="tab-btn" data-target="tabOptimiser">Optimiser</div>
+        </div>
+
+        <!-- TAB 1: DOMAIN -->
+        <div id="tabDomain" class="tab-content active">
+            <h2>Domain Settings</h2>
+            <div class="control-group">
+                <label>Domain Dimensions (Voxel Grid) <span class="info-icon" data-tooltip="The X, Y, Z extent of the design domain in voxels.">[?]</span></label>
+                <div class="flex-row">
+                    <input type="number" id="domX" value="40" data-req="true">
+                    <input type="number" id="domY" value="10" data-req="true">
+                    <input type="number" id="domZ" value="10" data-req="true">
+                </div>
+            </div>
+
+            <h2>Structure Tree</h2>
+            <div class="control-group flex-row" style="margin-bottom: 5px;">
+                <select id="newRegionType">
+                    <option value="preserve">Preserve (Solid)</option>
+                    <option value="obstacle">Obstacle (Void)</option>
+                </select>
+                <button id="addRegionBtn" style="margin: 0;">Add Region</button>
+            </div>
+            <button id="groupSelectedBtn" style="background:#8e44ad; margin-bottom: 10px; font-size: 0.8rem; padding: 5px;">Link & Group Selected Regions</button>
+            
+            <div id="regionTree"></div>
+
+            <div id="addPrimDiv" style="margin-top: 15px; padding-top: 10px; border-top: 1px solid var(--border);">
+                <label>Add Shape to Selected Region</label>
+                <div class="flex-row">
+                    <select id="newPrimShape"><option value="cuboid">Cuboid</option><option value="cylinder">Cylinder</option></select>
+                    <select id="newPrimOp"><option value="add">Add (+)</option><option value="subtract">Subtract (-)</option></select>
+                </div>
+                <button id="addPrimBtn" disabled style="margin-top: 5px;">+ Add Shape</button>
+            </div>
+
+            <button id="clearDomainBtn" style="background: #c53030; margin-top: 15px;">Clear Domain</button>
+
+            <!-- Contextual Properties Panel -->
+            <div id="propertiesPanel">
+                <div id="propRegion" style="display: none;">
+                    <h3>Boundary Conditions</h3>
+                    <div id="bcSettings">
+                        <div class="flex-row">
+                            <label style="display:flex; align-items:center;"><input type="checkbox" id="isFixed"> Encastre Constraint</label>
+                            <button id="dofToggleBtn" style="width: auto; padding: 2px 6px; font-size: 0.75rem; margin:0; margin-left: auto;">DOFs ▾</button>
+                        </div>
+                        
+                        <!-- DOF Dropdown Panel -->
+                        <div id="dofPanel" style="display:none; grid-template-columns: 1fr 1fr 1fr; gap: 5px; background: var(--bg-list); padding: 8px; margin-top: 5px; border-radius: 3px; font-size: 0.8rem; border: 1px solid var(--border);">
+                            <label><input type="checkbox" class="dof-cb" value="Tx"> Tx</label>
+                            <label><input type="checkbox" class="dof-cb" value="Ty"> Ty</label>
+                            <label><input type="checkbox" class="dof-cb" value="Tz"> Tz</label>
+                            <label><input type="checkbox" class="dof-cb" value="Rx"> Rx</label>
+                            <label><input type="checkbox" class="dof-cb" value="Ry"> Ry</label>
+                            <label><input type="checkbox" class="dof-cb" value="Rz"> Rz</label>
+                        </div>
+
+                        <!-- Dynamic Fixed Constraint Settings -->
+                        <div id="fixedSettings" style="display:none; margin-left: 10px; margin-top: 8px; border-left: 2px solid #3498db; padding-left: 10px;">
+                            <label>Apply To</label>
+                            <select id="fixedApp" style="margin-bottom:8px;">
+                                <option value="bulk">Bulk Volume</option>
+                                <option value="faces">Specific Faces</option>
+                            </select>
+                            <div id="fixedFacesUI" style="display:none; gap:5px; margin-bottom:8px;">
+                                <button id="selectFixedFacesBtn" style="background: var(--bg-input); border: 1px solid var(--border); color: var(--text-main); margin:0;">Select Faces (0)</button>
+                                <button id="clearFixedFacesBtn" style="background:#c53030; margin:0;">Clear</button>
+                            </div>
+                        </div>
+
+                        <h4 style="margin-top: 15px; margin-bottom: 5px; color: var(--text-muted);">Applied Loads</h4>
+                        <div id="loadsContainer"></div>
+                        <button id="addLoadBtn" style="background:#27ae60;">+ Add Load</button>
+                    </div>
+                </div>
+
+                <div id="propTransform" style="display: none;">
+                    <h3 id="transformTitle">Transform</h3>
+                    <div class="btn-group">
+                        <button class="btn-toggle active" id="modeTranslate">Move</button>
+                        <button class="btn-toggle" id="modeRotate">Rotate</button>
+                        <button class="btn-toggle" id="modeScale">Scale</button>
+                    </div>
+                    <label>Position (Snaps to 0.5 voxels)</label>
+                    <div class="xyz-inputs">
+                        <span>X</span><input type="number" id="posX" step="0.5">
+                        <span>Y</span><input type="number" id="posY" step="0.5">
+                        <span>Z</span><input type="number" id="posZ" step="0.5">
+                    </div>
+                    <label>Rotation (15° Snaps)</label>
+                    <div class="xyz-inputs">
+                        <span>X</span><input type="number" id="rotX" step="15">
+                        <span>Y</span><input type="number" id="rotY" step="15">
+                        <span>Z</span><input type="number" id="rotZ" step="15">
+                    </div>
+                    <label>Scale</label>
+                    <div class="xyz-inputs">
+                        <span>X</span><input type="number" id="scaX" step="1" min="0.1">
+                        <span>Y</span><input type="number" id="scaY" step="1" min="0.1">
+                        <span>Z</span><input type="number" id="scaZ" step="1" min="0.1">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 2: ANALYSIS -->
+        <div id="tabAnalysis" class="tab-content">
+            <h2>Global Analysis Parameters</h2>
+            <div class="param-grid">
+                <div><label>Young's Mod. <span class="info-icon" data-tooltip="Young's modulus of the material in Pa.">[?]</span></label><input type="number" id="youngs" value="210e9" data-req="true"></div>
+                <div><label>Poisson's Ratio <span class="info-icon" data-tooltip="Poisson's ratio of the material.">[?]</span></label><input type="number" id="poisson" value="0.3" data-req="true"></div>
+            </div>
+
+            <h2>Method Specifics</h2>
+            <div class="control-group">
+                <label>Analysis Type</label>
+                <select id="analysisType">
+                    <option value="conf">Conformal (Alpha Wrap)</option>
+                    <option value="reg">Regular (Hex Mesh)</option>
+                    <option value="cg">Conjugate Gradient (GPU)</option>
+                </select>
+            </div>
+
+            <div id="panel_conf" class="analysis-subpanel">
+                <div class="param-grid">
+                    <div><label>Alpha Prop. <span class="info-icon" data-tooltip="The proportion of the geometry's bounding box diagonal to use as alpha in alpha wrap. A smaller alpha (0.01) captures finer details but may result in a more complex mesh, while a larger alpha (0.1) simplifies the mesh but may lose some features.">[?]</span></label><input type="number" id="alpha_prop" value="0.005" data-req="true"></div>
+                    <div><label>Offset Prop. <span class="info-icon" data-tooltip="The proportion of the geometry's bounding box diagonal to use as offset in alpha wrap. The offset value helps to avoid issues with degenerate faces and improves mesh quality. A small offset (0.002) creates a tight conformal mesh, while a larger offset (0.02) provides more leeway for mesh generation.">[?]</span></label><input type="number" id="offset_prop" value="0.001" data-req="true"></div>
+                    <div><label>Max Char. Len. <span class="info-icon" data-tooltip="Maximum mesh characteristic length for Tetgen.">[?]</span></label><input type="number" id="max_char" value="0.005" data-req="true"></div>
+                    <div><label>Num Cells Cutoff <span class="info-icon" data-tooltip="The number of grid cells large that a connected component has to be before it appears in the mesh.">[?]</span></label><input type="number" id="num_cutoff" value="10.0" data-req="true"></div>
+                </div>
+            </div>
+
+            <div id="panel_reg" class="analysis-subpanel" style="display:none;">
+                <div class="param-grid">
+                    <div><label>Voxel Size (mm) <span class="info-icon" data-tooltip="The side length of a single voxel in millimeters.">[?]</span></label><input type="number" id="vox_size_reg" value="1.0" data-req="true"></div>
+                </div>
+            </div>
+
+            <div id="panel_cg" class="analysis-subpanel" style="display:none;">
+                <div class="param-grid">
+                    <div><label>Voxel Size (mm) <span class="info-icon" data-tooltip="Edge length of each voxel in millimetres.">[?]</span></label><input type="number" id="vox_size_cg" value="1.0" data-req="true"></div>
+                    <div><label>PCG Max Iters <span class="info-icon" data-tooltip="Maximum number of iterations for the PCG solver.">[?]</span></label><input type="number" id="pcg_iters" value="10000" data-req="true"></div>
+                    <div style="grid-column: span 2;"><label>PCG Tol. <span class="info-icon" data-tooltip="Convergence tolerance for the PCG solver.">[?]</span></label><input type="number" id="pcg_tol" value="1e-3" data-req="true"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 3: OPTIMISER -->
+        <div id="tabOptimiser" class="tab-content">
+            <h2>Optimisation Definition</h2>
+            <div class="control-group">
+                <label>Optimisation Name <span class="info-icon" data-tooltip="The directory where all the optimisation metadata, meshes, and models are stored. Must be alphanumeric and underscores only.">[?]</span></label>
+                <input type="text" id="optName" value="PCLS_Optimisation" data-req="true">
+            </div>
+
+            <h2>Loop & Target Parameters</h2>
+            <div class="param-grid">
+                <div><label>Out. Max Iters <span class="info-icon" data-tooltip="Maximum iterations for the outer loop.">[?]</span></label><input type="number" id="out_iters" value="25" data-req="true"></div>
+                <div><label>In. Max Iters <span class="info-icon" data-tooltip="Maximum iterations for the inner loop.">[?]</span></label><input type="number" id="in_iters" value="50" data-req="true"></div>
+                <div><label>Out. Conv. Thr. <span class="info-icon" data-tooltip="Convergence threshold for the outer loop.">[?]</span></label><input type="number" id="out_conv" value="1e-2" data-req="true"></div>
+                <div><label>In. Conv. Thr. <span class="info-icon" data-tooltip="Convergence threshold for the inner loop.">[?]</span></label><input type="number" id="in_conv" value="1e-2" data-req="true"></div>
+                <div><label>Target Volume <span class="info-icon" data-tooltip="Target volume fraction.">[?]</span></label><input type="number" id="target_vol" value="0.5" data-req="true"></div>
+                <div><label>Beta <span class="info-icon" data-tooltip="Regularisation parameter.">[?]</span></label><input type="number" id="beta" value="0.25" data-req="true"></div>
+                <div><label>dt (Time step) <span class="info-icon" data-tooltip="Time step size.">[?]</span></label><input type="number" id="dt" value="0.02" data-req="true"></div>
+                <div><label>Const. Iters Conv. <span class="info-icon" data-tooltip="Number of constant iterations to confirm convergence.">[?]</span></label><input type="number" id="const_iters" value="3" data-req="true"></div>
+            </div>
+
+            <h2>Constraints & Decay</h2>
+            <div class="param-grid">
+                <div><label>Mu1 Initial <span class="info-icon" data-tooltip="Initial value for mu1.">[?]</span></label><input type="number" id="mu1" value="0.2" data-req="true"></div>
+                <div><label>Mu1 Decay Fac. <span class="info-icon" data-tooltip="Decay factor for mu1.">[?]</span></label><input type="number" id="mu1_decay" value="0.9" data-req="true"></div>
+                <div><label>Mu2 Initial <span class="info-icon" data-tooltip="Initial value for mu2.">[?]</span></label><input type="number" id="mu2" value="5.0" data-req="true"></div>
+                <div><label>Mu2 Decay Fac. <span class="info-icon" data-tooltip="Decay factor for mu2.">[?]</span></label><input type="number" id="mu2_decay" value="0.7" data-req="true"></div>
+            </div>
+
+            <h2>Field Values & Clamps</h2>
+            <div class="param-grid">
+                <div><label>Solid Value <span class="info-icon" data-tooltip="The value representing the solid phase in the density field.">[?]</span></label><input type="number" id="solid_val" value="2.0" data-req="true"></div>
+                <div><label>Void Value <span class="info-icon" data-tooltip="The value representing the void phase in the density field.">[?]</span></label><input type="number" id="void_val" value="1.0" data-req="true"></div>
+                <div><label>Void Density <span class="info-icon" data-tooltip="Density of void elements.">[?]</span></label><input type="number" id="void_dens" value="1e-3" data-req="true"></div>
+                <div><label>Noise Multi. <span class="info-icon" data-tooltip="Multiplier for initial noise.">[?]</span></label><input type="number" id="noise_mult" value="0.1" data-req="true"></div>
+                <div><label>G2 Clamp Min <span class="info-icon" data-tooltip="Minimum clamp value for g2.">[?]</span></label><input type="number" id="g2_min" value="-10.0" data-req="true"></div>
+                <div><label>G2 Clamp Max <span class="info-icon" data-tooltip="Maximum clamp value for g2.">[?]</span></label><input type="number" id="g2_max" value="10.0" data-req="true"></div>
+                <div><label>Phi Clamp Min <span class="info-icon" data-tooltip="Minimum clamp value for phi.">[?]</span></label><input type="number" id="phi_min" value="0.0" data-req="true"></div>
+                <div><label>Phi Clamp Max <span class="info-icon" data-tooltip="Maximum clamp value for phi.">[?]</span></label><input type="number" id="phi_max" value="3.0" data-req="true"></div>
+            </div>
+        </div>
+
+        <div id="exportFooter">
+            <button id="importBtn" style="background: #e67e22; margin-bottom: 10px;">Import JSON</button>
+            <button id="exportBtn" style="background: #28a745; margin:0;">Validate & Export JSON</button>
+            <input type="file" id="fileInput" accept=".json" style="display: none;">
+        </div>
+    </div>
+
+    <div id="viewport">
+        <!-- Floating Buttons -->
+        <button id="helpBtn" title="Help & Instructions">?</button>
+        <div id="topRightBtns">
+            <button id="themeToggleBtn">☀️ Light Mode</button>
+            <button id="homeCameraBtn">🏠 Home Camera</button>
+        </div>
+        <button id="undoBtn">⟲ Undo</button>
+        <div id="axesWidget"></div>
+    </div>
+
+    <div id="globalTooltip" class="global-tooltip"></div>
+
+    <!-- Help Modal -->
+    <div id="helpModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>How to Use the Generative Design Setup</h2>
+            <p>Welcome to the PCLS problem definition webapp. This tool allows you to visually construct regions, set analysis parameters, and export your problem space directly into a JSON schema ready for the custom topology optimiser.</p>
+            
+            <h3>1. Object Types & Roles</h3>
+            <ul>
+                <li><strong>Preserve Regions (Green):</strong> Solid areas of material that MUST remain in the final design. These act as connection points where boundary conditions (loads and constraints) are applied.</li>
+                <li><strong>Obstacle Regions (Red):</strong> Void areas (keep-outs) where material is strictly forbidden from growing during optimisation to avoid interference.</li>
+                <li><strong>Primitives (Shapes):</strong> Base geometries (cuboids and cylinders) that build up the regions. Primitives themselves only represent mathematical bounding volumes; their combined CSG operation is what ultimately forms the solid region.</li>
+            </ul>
+
+            <h3>2. Operations & Hierarchy</h3>
+            <ul>
+                <li><strong>Adding/Subtracting:</strong> Select a region, choose a shape (Cuboid/Cylinder) and an operation (+ Add or - Subtract), then click "+ Add Shape". Subtracting a primitive will carve out geometry from the collective region.</li>
+                <li><strong>Grouping:</strong> Tick the checkboxes next to two or more independent regions and click "Link & Group". Grouping merges their physical identities, meaning boundary conditions applied to the group apply collectively to all regions within it simultaneously.</li>
+                <li><strong>Duplicating (Dup):</strong> You can duplicate entire regions (spawning exact copies at identical physical spaces) or individual primitives (which applies a small physical offset for convenience).</li>
+            </ul>
+
+            <h3>3. Colors & Widgets Glossary</h3>
+            <ul>
+                <li><strong style="color:#4caf50;">Green Translucent Volumes:</strong> Preserve (Solid) Regions.</li>
+                <li><strong style="color:#f44336;">Red Translucent Volumes:</strong> Obstacle (Void) Regions.</li>
+                <li><strong style="color:#f39c12;">Orange Wireframes:</strong> Additive (+) Primitives.</li>
+                <li><strong style="color:#e74c3c;">Red Wireframes:</strong> Subtractive (-) Primitives.</li>
+                <li><strong style="color:#3498db;">Blue Highlights / Padlock Widget:</strong> Highlighted faces represent constrained areas. A padlock widget hovers in 3D space to indicate applied constraints. An opaque, locked padlock means Encastre (all 6 DOFs fixed). A slightly translucent, open padlock means only partial DOFs are fixed.</li>
+                <li><strong style="color:#e67e22;">Orange Highlights / Arrow Widgets:</strong> Highlighted faces represent loaded areas. Straight red arrows represent Force vectors, pointing towards the geometric centroid. Curved purple arrows with a central axis line denote Moment loads.</li>
+            </ul>
+
+            <h3>4. Movement & Camera</h3>
+            <ul>
+                <li><strong>Camera:</strong> Left-click and drag to rotate the view. Right-click and drag to pan. Scroll to zoom dynamically directly toward your mouse cursor.</li>
+                <li><strong>Transform:</strong> Select a Region or Shape to reveal the movement gizmo. Use the toggle buttons (Move/Rotate/Scale) or enter specific values into the Properties panel on the left.</li>
+            </ul>
+
+            <h3>5. Boundary Conditions (Loads & Constraints)</h3>
+            <ul>
+                <li><strong>Applying Constraints:</strong> Select a <em>Preserve</em> region or group. You can check <strong>Encastre Constraint</strong> to fix all 6 degrees of freedom automatically, or expand the <strong>DOFs ▾</strong> dropdown to pick exactly which of the 6 degrees of freedom (Tx, Ty, Tz, Rx, Ry, Rz) to constrain. Choose to apply it to the bulk volume, or select specific faces by clicking them in the viewport (highlights blue).</li>
+                <li><strong>Applying Loads:</strong> Click "+ Add Load" to add Force or Moment loads. Like constraints, choose whether the load applies to the bulk volume or specific faces (highlights orange).</li>
+            </ul>
+
+            <h3>6. Exporting & Importing</h3>
+            <ul>
+                <li>Fill out the <strong>Analysis</strong> and <strong>Optimiser</strong> tabs according to your required simulation constraints.</li>
+                <li>Click <strong>Validate & Export JSON</strong>. The tool will rigorously validate your physics setup—ensuring that all applied loads are resisted by corresponding constraints and that global rigid body translation is completely prevented—before allowing the `.json` file to export.</li>
+                <li>You can reload your work anytime via the <strong>Import JSON</strong> button.</li>
+            </ul>
+        </div>
+    </div>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { TransformControls } from 'three/addons/controls/TransformControls.js';
+        import { CSG } from 'three-csg-ts';
+
+        // --- 0. Global Tooltip Logic ---
+        const tooltip = document.getElementById('globalTooltip');
+        document.querySelectorAll('.info-icon').forEach(icon => {
+            icon.addEventListener('mouseenter', () => {
+                tooltip.innerHTML = icon.getAttribute('data-tooltip');
+                const rect = icon.getBoundingClientRect();
+                let top = rect.top - tooltip.offsetHeight - 8; 
+                let left = rect.left + (rect.width / 2) - (tooltip.offsetWidth / 2);
+                if (top < 10) top = rect.bottom + 8; 
+                if (left < 10) left = 10; 
+                if (left + tooltip.offsetWidth > window.innerWidth - 10) left = window.innerWidth - tooltip.offsetWidth - 10; 
+                tooltip.style.top = top + 'px';
+                tooltip.style.left = left + 'px';
+                tooltip.classList.add('show');
+            });
+            icon.addEventListener('mouseleave', () => { tooltip.classList.remove('show'); });
+        });
+
+        // --- 0.1 Help Modal & DOF Logic ---
+        const helpModal = document.getElementById("helpModal");
+        document.getElementById("helpBtn").onclick = () => { helpModal.style.display = "block"; };
+        document.getElementsByClassName("close")[0].onclick = () => { helpModal.style.display = "none"; };
+        window.onclick = (event) => { if (event.target == helpModal) helpModal.style.display = "none"; };
+
+        document.getElementById('dofToggleBtn').addEventListener('click', () => {
+            let target = activeGroup || activeRegion;
+            if(!target) return;
+            target.dofPanelOpen = !target.dofPanelOpen;
+            renderFixedUI(target);
+        });
+
+        // --- 0.5 Z-Up Global Configuration ---
+        THREE.Object3D.DEFAULT_UP.set(0, 0, 1);
+
+        // --- 1. Main Scene Setup ---
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x1e1e1e);
+        
+        const faceHighlightsGroup = new THREE.Group();
+        scene.add(faceHighlightsGroup);
+
+        const loadHelpersGroup = new THREE.Group();
+        scene.add(loadHelpersGroup);
+        
+        const camera = new THREE.PerspectiveCamera(45, (window.innerWidth - 400) / window.innerHeight, 0.1, 1000);
+        camera.position.set(40, 40, 30); 
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth - 400, window.innerHeight);
+        document.getElementById('viewport').appendChild(renderer.domElement);
+
+        // Brightened Default Scene Lighting
+        const ambientLight = new THREE.AmbientLight(0x404040, 3.0);
+        scene.add(ambientLight);
+        const dirLight = new THREE.DirectionalLight(0xffffff, 2.0);
+        dirLight.position.set(20, 20, 40); 
+        scene.add(dirLight);
+
+        const orbit = new OrbitControls(camera, renderer.domElement);
+        orbit.enableZoom = false; 
+        
+        // --- Custom Linear Zoom to Mouse ---
+        renderer.domElement.addEventListener('wheel', (event) => {
+            event.preventDefault();
+            const mouse = new THREE.Vector2();
+            mouse.x = (event.offsetX / renderer.domElement.clientWidth) * 2 - 1;
+            mouse.y = -(event.offsetY / renderer.domElement.clientHeight) * 2 + 1;
+            
+            const raycaster = new THREE.Raycaster();
+            raycaster.setFromCamera(mouse, camera);
+            
+            let zoomTarget = new THREE.Vector3();
+            if (domainBox) {
+                const intersects = raycaster.intersectObject(domainBox, false);
+                if (intersects.length > 0) zoomTarget.copy(intersects[0].point);
+                else raycaster.ray.at(camera.position.distanceTo(orbit.target), zoomTarget);
+            } else {
+                raycaster.ray.at(camera.position.distanceTo(orbit.target), zoomTarget);
+            }
+
+            const step = event.deltaY < 0 ? 1 : -1; 
+            const zoomAmount = 4.0; 
+
+            const vec = new THREE.Vector3().subVectors(zoomTarget, camera.position).normalize();
+            const dist = camera.position.distanceTo(zoomTarget);
+            
+            if (step > 0 && dist < zoomAmount * 1.5) {
+                camera.position.addScaledVector(vec, dist * 0.5);
+            } else {
+                camera.position.addScaledVector(vec, step * zoomAmount);
+            }
+            
+            if (step > 0) orbit.target.lerp(zoomTarget, 0.1);
+            orbit.update();
+        }, { passive: false });
+        
+        // --- Theme Toggle Logic ---
+        document.getElementById('themeToggleBtn').addEventListener('click', (e) => {
+            const isLight = document.body.classList.toggle('light-mode');
+            if (isLight) {
+                e.target.innerText = '🌙 Dark Mode';
+                e.target.style.background = '#34495e';
+                e.target.style.color = '#fff';
+                scene.background.setHex(0xe8e8e8);
+                if(domainBox) domainBox.material.color.setHex(0x999999);
+            } else {
+                e.target.innerText = '☀️ Light Mode';
+                e.target.style.background = '#f1c40f';
+                e.target.style.color = '#222';
+                scene.background.setHex(0x1e1e1e);
+                if(domainBox) domainBox.material.color.setHex(0x555555);
+            }
+        });
+
+        // --- 2. Transform Controls & Strict Bounds Clamping ---
+        const transformControl = new TransformControls(camera, renderer.domElement);
+        transformControl.setTranslationSnap(0.5); 
+        transformControl.setRotationSnap(THREE.MathUtils.degToRad(15));
+        
+        let safePos = new THREE.Vector3();
+        let safeQuat = new THREE.Quaternion();
+        let safeScale = new THREE.Vector3();
+        
+        transformControl.addEventListener('dragging-changed', (event) => { 
+            orbit.enabled = !event.value; 
+            if (event.value && transformControl.object) {
+                safePos.copy(transformControl.object.position);
+                safeQuat.copy(transformControl.object.quaternion);
+                safeScale.copy(transformControl.object.scale);
+            } else if (!event.value) {
+                saveState(); // Trigger Undo save on mouse up
+            }
+        });
+
+        transformControl.addEventListener('change', () => {
+            if (!transformControl.object) return;
+            
+            transformControl.object.updateMatrixWorld(true);
+            const bbox = new THREE.Box3().setFromObject(transformControl.object);
+            
+            const domX = parseFloat(document.getElementById('domX').value) || 40;
+            const domY = parseFloat(document.getElementById('domY').value) || 10;
+            const domZ = parseFloat(document.getElementById('domZ').value) || 10;
+            
+            const tol = 0.01;
+            if (bbox.min.x < -tol || bbox.max.x > domX + tol ||
+                bbox.min.y < -tol || bbox.max.y > domY + tol ||
+                bbox.min.z < -tol || bbox.max.z > domZ + tol) {
+                
+                transformControl.object.position.copy(safePos);
+                transformControl.object.quaternion.copy(safeQuat);
+                transformControl.object.scale.copy(safeScale);
+                transformControl.object.updateMatrixWorld(true);
+            } else {
+                safePos.copy(transformControl.object.position);
+                safeQuat.copy(transformControl.object.quaternion);
+                safeScale.copy(transformControl.object.scale);
+            }
+
+            updateUIFromTransform();
+            
+            if (activeGroup) {
+                activeGroup.regions.forEach(r => rebuildRegionCSG(r));
+            } else if (activeRegion) {
+                rebuildRegionCSG(activeRegion);
+            }
+            renderAllLoadHelpers();
+        });
+        scene.add(transformControl);
+
+        const regionPivot = new THREE.Group();
+        scene.add(regionPivot);
+
+        // --- Viewport Clicking (Selecting Primitives, Regions/Groups, or Faces) ---
+        // Payload: { type: 'load'|'fixed', ref: LoadObject|Region|Group }
+        let selectingFacesFor = null; 
+
+        renderer.domElement.addEventListener('pointerdown', (e) => {
+            if (e.button !== 0 || transformControl.dragging || transformControl.axis !== null) return;
+            
+            const mouse = new THREE.Vector2();
+            mouse.x = (e.offsetX / renderer.domElement.clientWidth) * 2 - 1;
+            mouse.y = -(e.offsetY / renderer.domElement.clientHeight) * 2 + 1;
+            
+            const raycaster = new THREE.Raycaster();
+            raycaster.setFromCamera(mouse, camera);
+
+            // [Face Selection Mode]
+            if (selectingFacesFor) {
+                let interactables = activeGroup ? activeGroup.regions.map(r=>r.csgMesh) : [activeRegion.csgMesh];
+                const intersects = raycaster.intersectObjects(interactables, false);
+                
+                if (intersects.length > 0) {
+                    const hit = intersects[0];
+                    const hitMesh = hit.object;
+                    
+                    const localPoint = hitMesh.worldToLocal(hit.point.clone());
+                    const localNormal = hit.face.normal.clone();
+
+                    const faceData = {
+                        normal: {x: localNormal.x, y: localNormal.y, z: localNormal.z},
+                        point: {x: localPoint.x, y: localPoint.y, z: localPoint.z}
+                    };
+
+                    if (selectingFacesFor.type === 'load') {
+                        selectingFacesFor.ref.faces = selectingFacesFor.ref.faces || [];
+                        selectingFacesFor.ref.faces.push(faceData);
+                        renderLoadsUI(activeGroup || activeRegion);
+                    } else if (selectingFacesFor.type === 'fixed') {
+                        selectingFacesFor.ref.fixedFaces = selectingFacesFor.ref.fixedFaces || [];
+                        selectingFacesFor.ref.fixedFaces.push(faceData);
+                        renderFixedUI(activeGroup || activeRegion);
+                    }
+
+                    updateFaceHighlights(activeGroup || activeRegion);
+                    renderAllLoadHelpers();
+                    saveState();
+                }
+                return; // Prevent standard selection while applying face conditions
+            }
+
+            // [Standard Selection Mode]
+            regions.forEach(r => r.primitives.forEach(p => p.mesh.material.visible = true));
+
+            let hitPrim = null;
+            let closestDist = Infinity;
+            regions.forEach(r => {
+                r.primitives.forEach(p => {
+                    const intersects = raycaster.intersectObject(p.mesh, false);
+                    if (intersects.length > 0 && intersects[0].distance < closestDist) {
+                        closestDist = intersects[0].distance;
+                        hitPrim = { region: r, primitive: p };
+                    }
+                });
+            });
+
+            regions.forEach(r => r.primitives.forEach(p => p.mesh.material.visible = false));
+
+            if (hitPrim) {
+                selectPrimitive(hitPrim.region, hitPrim.primitive);
+                return;
+            }
+
+            let interactables = [];
+            regions.forEach(r => interactables.push(r.csgMesh));
+            const intersects = raycaster.intersectObjects(interactables, false);
+            
+            if (intersects.length > 0) {
+                const hitMesh = intersects[0].object;
+                const hitRegion = regions.find(r => r.csgMesh === hitMesh);
+                if (hitRegion) {
+                    if (hitRegion.groupId) {
+                        const g = groups.find(g => g.id === hitRegion.groupId);
+                        if(g) selectGroup(g);
+                    } else {
+                        selectRegion(hitRegion);
+                    }
+                    return;
+                }
+            }
+
+            clearSelection();
+            updateSidebarTree();
+        });
+
+        // --- 3. Custom Axes Widget ---
+        const axesContainer = document.getElementById('axesWidget');
+        const axesRenderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+        axesRenderer.setSize(150, 150);
+        axesContainer.appendChild(axesRenderer.domElement);
+        const axesScene = new THREE.Scene();
+        const axesCamera = new THREE.PerspectiveCamera(50, 1, 0.1, 10);
+        axesCamera.up.set(0, 0, 1);
+        const origin = new THREE.Vector3(0, 0, 0);
+        
+        axesScene.add(new THREE.ArrowHelper(new THREE.Vector3(1, 0, 0), origin, 1.2, 0xff0000, 0.4, 0.3));
+        axesScene.add(new THREE.ArrowHelper(new THREE.Vector3(0, 1, 0), origin, 1.2, 0x00ff00, 0.4, 0.3));
+        axesScene.add(new THREE.ArrowHelper(new THREE.Vector3(0, 0, 1), origin, 1.2, 0x0055ff, 0.4, 0.3));
+        
+        function createAxisLabel(text, color, position) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 64; canvas.height = 64;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = color; ctx.font = 'bold 48px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(text, 32, 32);
+            const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(canvas), depthTest: false }));
+            sprite.position.copy(position); sprite.scale.set(0.5, 0.5, 0.5); axesScene.add(sprite);
+        }
+        createAxisLabel('X', '#ff0000', new THREE.Vector3(1.4, 0, 0));
+        createAxisLabel('Y', '#00ff00', new THREE.Vector3(0, 1.4, 0));
+        createAxisLabel('Z', '#0055ff', new THREE.Vector3(0, 0, 1.4));
+
+        // --- 4. Domain Environment ---
+        let domainBox;
+        let gridHelper;
+        function updateDomain() {
+            if (domainBox) scene.remove(domainBox);
+            if (gridHelper) scene.remove(gridHelper);
+            
+            const x = parseFloat(document.getElementById('domX').value) || 40;
+            const y = parseFloat(document.getElementById('domY').value) || 10;
+            const z = parseFloat(document.getElementById('domZ').value) || 10;
+            
+            const geometry = new THREE.BoxGeometry(x, y, z);
+            const edges = new THREE.EdgesGeometry(geometry);
+            
+            let domColor = document.body.classList.contains('light-mode') ? 0x999999 : 0x555555;
+            domainBox = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: domColor, linewidth: 2 }));
+            
+            const center = new THREE.Vector3(x/2, y/2, z/2);
+            domainBox.position.copy(center);
+            scene.add(domainBox);
+            
+            orbit.target.copy(center);
+            const maxDim = Math.max(x, y, z);
+            camera.position.set(center.x + maxDim * 1.2, center.y + maxDim * 1.2, center.z + maxDim * 0.8);
+            orbit.update();
+            
+            gridHelper = new THREE.GridHelper(Math.max(x, y) * 2, Math.max(x, y) * 2, 0x666666, 0x444444);
+            gridHelper.rotation.x = Math.PI / 2;
+            scene.add(gridHelper);
+        }
+        updateDomain();
+        ['domX', 'domY', 'domZ'].forEach(id => document.getElementById(id).addEventListener('change', updateDomain));
+
+        document.getElementById('homeCameraBtn').addEventListener('click', () => {
+            const x = parseFloat(document.getElementById('domX').value) || 40;
+            const y = parseFloat(document.getElementById('domY').value) || 10;
+            const z = parseFloat(document.getElementById('domZ').value) || 10;
+            const center = new THREE.Vector3(x/2, y/2, z/2);
+            orbit.target.copy(center);
+            const maxDim = Math.max(x, y, z);
+            camera.position.set(center.x + maxDim * 1.2, center.y + maxDim * 1.2, center.z + maxDim * 0.8);
+            orbit.update();
+        });
+
+        // --- 5. Data Model, Graphical Widgets & CSG ---
+        let regions = [];
+        let groups = [];
+        let activeRegion = null;
+        let activeGroup = null;
+        let activePrimitive = null;
+        let regionCounter = 0;
+        let groupCounter = 0;
+
+        const generateUUID = () => 'id-' + Math.random().toString(36).substr(2, 9) + '-' + Date.now().toString(36);
+
+        function createMaterial(type) {
+            const color = type === 'preserve' ? 0x4caf50 : 0xf44336;
+            return new THREE.MeshLambertMaterial({ color: color, transparent: true, opacity: 0.85 });
+        }
+        
+        function createTextSprite() {
+            const spriteMat = new THREE.SpriteMaterial({ depthTest: false, transparent: true, renderOrder: 999 });
+            const sprite = new THREE.Sprite(spriteMat);
+            sprite.scale.set(3.5, 3.5, 1);
+            sprite.visible = false;
+            return sprite;
+        }
+
+        function drawPadlockCanvas(isLocked) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 64; canvas.height = 64;
+            const ctx = canvas.getContext('2d');
+            
+            ctx.fillStyle = isLocked ? 'rgba(100, 100, 100, 0.95)' : 'rgba(100, 100, 100, 0.7)';
+            ctx.beginPath();
+            ctx.roundRect(8, 8, 48, 48, 12);
+            ctx.fill();
+            
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 3;
+            ctx.lineCap = 'round';
+            
+            // Padlock Body
+            ctx.fillStyle = '#ccc';
+            ctx.fillRect(22, 34, 20, 16);
+            ctx.strokeRect(22, 34, 20, 16);
+            
+            // Padlock Keyhole
+            ctx.fillStyle = '#222';
+            ctx.beginPath(); ctx.arc(32, 40, 2.5, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.moveTo(31, 40); ctx.lineTo(33, 40); ctx.lineTo(34, 46); ctx.lineTo(30, 46); ctx.fill();
+            
+            // Padlock Shackle
+            ctx.beginPath();
+            if (isLocked) {
+                ctx.arc(32, 26, 8, Math.PI, 0);
+                ctx.lineTo(40, 34);
+                ctx.moveTo(24, 26);
+                ctx.lineTo(24, 34);
+            } else {
+                ctx.arc(32, 22, 8, Math.PI, 0);
+                ctx.moveTo(24, 22);
+                ctx.lineTo(24, 34);
+                ctx.moveTo(40, 22);
+                ctx.lineTo(40, 26);
+            }
+            ctx.stroke();
+            
+            return canvas;
+        }
+        
+        function updateRegionSprite(region) {
+            if (region.groupId) { region.sprite.visible = false; return; }
+            
+            const anyDofs = Object.values(region.dofs).some(v=>v);
+            if (!anyDofs) { region.sprite.visible = false; return; }
+            
+            const isEncastre = region.dofs.Tx && region.dofs.Ty && region.dofs.Tz && region.dofs.Rx && region.dofs.Ry && region.dofs.Rz;
+            const canvas = drawPadlockCanvas(isEncastre);
+            
+            if (region.sprite.material.map) region.sprite.material.map.dispose();
+            region.sprite.material.map = new THREE.CanvasTexture(canvas);
+            region.sprite.material.needsUpdate = true;
+            region.sprite.visible = true;
+
+            // Hover at center of constrained mass
+            let center = new THREE.Vector3();
+            if (region.fixedApplyTo === 'faces' && region.fixedFaces && region.fixedFaces.length > 0) {
+                let count = 0;
+                region.fixedFaces.forEach(f => {
+                    let worldPt = region.csgMesh.localToWorld(new THREE.Vector3(f.point.x, f.point.y, f.point.z));
+                    center.add(worldPt);
+                    count++;
+                });
+                if (count > 0) center.divideScalar(count);
+            } else {
+                region.csgMesh.geometry.computeBoundingBox();
+                const box = region.csgMesh.geometry.boundingBox;
+                if (box && !box.isEmpty()) {
+                    box.getCenter(center);
+                }
+            }
+            region.sprite.position.copy(center);
+        }
+
+        function updateGroupSprite(g) {
+            const anyDofs = Object.values(g.dofs).some(v=>v);
+            if (!anyDofs) { g.sprite.visible = false; return; }
+            
+            const isEncastre = g.dofs.Tx && g.dofs.Ty && g.dofs.Tz && g.dofs.Rx && g.dofs.Ry && g.dofs.Rz;
+            const canvas = drawPadlockCanvas(isEncastre);
+            
+            if (g.sprite.material.map) g.sprite.material.map.dispose();
+            g.sprite.material.map = new THREE.CanvasTexture(canvas);
+            g.sprite.material.needsUpdate = true;
+            g.sprite.visible = true;
+
+            // Hover at center of constrained mass
+            let center = new THREE.Vector3();
+            if (g.fixedApplyTo === 'faces' && g.fixedFaces && g.fixedFaces.length > 0) {
+                let count = 0;
+                g.regions.forEach(meshWrapper => {
+                    g.fixedFaces.forEach(f => {
+                        let worldPt = meshWrapper.csgMesh.localToWorld(new THREE.Vector3(f.point.x, f.point.y, f.point.z));
+                        center.add(worldPt);
+                        count++;
+                    });
+                });
+                if (count > 0) center.divideScalar(count);
+            } else {
+                let box = new THREE.Box3();
+                g.regions.forEach(r => {
+                    r.csgMesh.geometry.computeBoundingBox();
+                    if(r.csgMesh.geometry.boundingBox) {
+                        let rBox = r.csgMesh.geometry.boundingBox.clone();
+                        rBox.applyMatrix4(r.csgMesh.matrixWorld);
+                        box.union(rBox);
+                    }
+                });
+                if(!box.isEmpty()) {
+                    box.getCenter(center);
+                }
+            }
+            g.sprite.position.copy(center);
+        }
+
+        function createRegion(type) {
+            const region = {
+                id: generateUUID(),
+                name: `Region ${++regionCounter}`,
+                type: type,
+                dofPanelOpen: false,
+                dofs: { Tx: false, Ty: false, Tz: false, Rx: false, Ry: false, Rz: false },
+                fixedApplyTo: 'bulk',
+                fixedFaces: [],
+                loads: [],
+                groupId: null,
+                primitives: [],
+                csgMesh: new THREE.Mesh(new THREE.BufferGeometry(), createMaterial(type)),
+                sprite: createTextSprite()
+            };
+            scene.add(region.csgMesh);
+            scene.add(region.sprite);
+            regions.push(region);
+            return region;
+        }
+
+        function createGroup(selectedRegions) {
+            let g = {
+                id: generateUUID(),
+                name: `Group ${++groupCounter}`,
+                dofPanelOpen: false,
+                dofs: { Tx: false, Ty: false, Tz: false, Rx: false, Ry: false, Rz: false },
+                fixedApplyTo: 'bulk',
+                fixedFaces: [],
+                loads: [],
+                regions: selectedRegions,
+                sprite: createTextSprite()
+            };
+            scene.add(g.sprite);
+            selectedRegions.forEach(r => { 
+                r.groupId = g.id; 
+                r.sprite.visible = false; 
+            });
+            groups.push(g);
+            return g;
+        }
+
+        function addPrimitiveToRegion(region, shapeType, operation) {
+            if (region.primitives.length === 0) operation = 'add'; 
+
+            const geom = shapeType === 'cuboid' 
+                ? new THREE.BoxGeometry(1, 1, 1) 
+                : new THREE.CylinderGeometry(0.5, 0.5, 1, 32).rotateX(Math.PI / 2);
+            
+            const prim = {
+                id: generateUUID(),
+                name: `${operation === 'add' ? '+' : '-'} ${shapeType}`,
+                shapeType: shapeType,
+                operation: operation,
+                mesh: new THREE.Mesh(geom, new THREE.MeshBasicMaterial({ visible: false }))
+            };
+
+            const domX = parseFloat(document.getElementById('domX').value) || 40;
+            const domY = parseFloat(document.getElementById('domY').value) || 10;
+            const domZ = parseFloat(document.getElementById('domZ').value) || 10;
+
+            if (region.primitives.length === 0) {
+                prim.mesh.position.set(domX/2, domY/2, domZ/2); 
+            } else {
+                region.csgMesh.geometry.computeBoundingBox();
+                const box = region.csgMesh.geometry.boundingBox;
+                if (box && !box.isEmpty()) {
+                    box.getCenter(prim.mesh.position);
+                } else {
+                    prim.mesh.position.set(domX/2, domY/2, domZ/2); 
+                }
+            }
+            
+            prim.mesh.scale.set(5, 5, 5);
+            
+            const edgeColor = operation === 'add' ? 0xf39c12 : 0xe74c3c;
+            prim.wireframe = new THREE.LineSegments(new THREE.EdgesGeometry(geom), new THREE.LineBasicMaterial({
+                color: edgeColor, transparent: true, opacity: 0.2, depthTest: false
+            }));
+            prim.mesh.add(prim.wireframe);
+            
+            scene.add(prim.mesh); 
+            region.primitives.push(prim);
+            
+            if (activeRegion === region && !activePrimitive && !activeGroup) {
+                regionPivot.attach(prim.mesh);
+            }
+
+            rebuildRegionCSG(region);
+            return prim;
+        }
+
+        function rebuildRegionCSG(region) {
+            if (region.primitives.length === 0) {
+                region.csgMesh.geometry.dispose();
+                region.csgMesh.geometry = new THREE.BufferGeometry();
+                if(region.groupId) updateGroupSprite(groups.find(g => g.id === region.groupId));
+                else updateRegionSprite(region);
+                updateFaceHighlights(activeGroup || activeRegion);
+                return;
+            }
+
+            let resultCSG = null;
+            for (let i = 0; i < region.primitives.length; i++) {
+                const prim = region.primitives[i];
+                prim.mesh.updateMatrixWorld(true);
+                
+                const geomClone = prim.mesh.geometry.clone();
+                geomClone.applyMatrix4(prim.mesh.matrixWorld);
+                
+                const tempMesh = new THREE.Mesh(geomClone);
+                tempMesh.updateMatrix(); 
+                
+                const primCSG = CSG.fromMesh(tempMesh);
+                geomClone.dispose();
+                
+                if (i === 0) {
+                    resultCSG = primCSG;
+                } else {
+                    if (prim.operation === 'add') resultCSG = resultCSG.union(primCSG);
+                    else resultCSG = resultCSG.subtract(primCSG);
+                }
+            }
+            
+            const newMesh = CSG.toMesh(resultCSG, new THREE.Matrix4(), region.csgMesh.material);
+            region.csgMesh.geometry.dispose();
+            region.csgMesh.geometry = newMesh.geometry;
+            
+            if (region.groupId) {
+                updateGroupSprite(groups.find(g => g.id === region.groupId));
+            } else {
+                updateRegionSprite(region);
+            }
+            
+            if (activeRegion === region || (activeGroup && activeGroup.id === region.groupId)) {
+                renderLoadsUI(activeGroup || activeRegion);
+                renderFixedUI(activeGroup || activeRegion);
+                updateFaceHighlights(activeGroup || activeRegion);
+            }
+        }
+
+        // --- 5.5 3D Load Arrows Rendering System ---
+        function renderAllLoadHelpers() {
+            while(loadHelpersGroup.children.length > 0){
+                let child = loadHelpersGroup.children[0];
+                loadHelpersGroup.remove(child);
+                child.traverse((node) => {
+                    if (node.isMesh || node.isLine) {
+                        if (node.geometry) node.geometry.dispose();
+                        if (node.material) {
+                            if (Array.isArray(node.material)) node.material.forEach(m => m.dispose());
+                            else node.material.dispose();
+                        }
+                    }
+                });
+            }
+
+            const drawLoad = (load, meshList) => {
+                let center = new THREE.Vector3();
+                if (load.applyTo === 'faces' && load.faces && load.faces.length > 0) {
+                    let count = 0;
+                    meshList.forEach(mesh => {
+                        load.faces.forEach(f => {
+                            let worldPt = mesh.localToWorld(new THREE.Vector3(f.point.x, f.point.y, f.point.z));
+                            center.add(worldPt);
+                            count++;
+                        });
+                    });
+                    if (count > 0) center.divideScalar(count);
+                } else {
+                    let box = new THREE.Box3();
+                    meshList.forEach(mesh => {
+                        mesh.geometry.computeBoundingBox();
+                        if(mesh.geometry.boundingBox) {
+                            let rBox = mesh.geometry.boundingBox.clone();
+                            rBox.applyMatrix4(mesh.matrixWorld);
+                            box.union(rBox);
+                        }
+                    });
+                    if (!box.isEmpty()) box.getCenter(center);
+                }
+
+                let vec = new THREE.Vector3(load.vector.x, load.vector.y, load.vector.z);
+                if (vec.lengthSq() === 0) vec.set(0,0,-1);
+                vec.normalize();
+
+                if (load.type === 'force') {
+                    // Straight solid arrow pointing AT the target center
+                    const group = new THREE.Group();
+                    const mat = new THREE.MeshLambertMaterial({color: 0xe74c3c, depthTest: false, transparent: true, opacity: 0.9});
+                    
+                    const coneGeom = new THREE.ConeGeometry(0.8, 2, 16);
+                    coneGeom.rotateX(Math.PI); // Tip points to local origin (-Y)
+                    const cone = new THREE.Mesh(coneGeom, mat);
+                    cone.position.set(0, 1, 0); 
+                    cone.renderOrder = 999;
+                    group.add(cone);
+                    
+                    const stemGeom = new THREE.CylinderGeometry(0.3, 0.3, 3, 16);
+                    const stem = new THREE.Mesh(stemGeom, mat);
+                    stem.position.set(0, 3.5, 0); 
+                    stem.renderOrder = 999;
+                    group.add(stem);
+
+                    // Align local -Y to vec
+                    const quaternion = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, -1, 0), vec);
+                    group.applyQuaternion(quaternion);
+                    group.position.copy(center);
+                    loadHelpersGroup.add(group);
+                    
+                } else if (load.type === 'moment') {
+                    // Curved purple arrow for Moment
+                    const group = new THREE.Group();
+                    const mat = new THREE.MeshLambertMaterial({color: 0x9b59b6, side: THREE.DoubleSide, depthTest: false, transparent: true, opacity: 0.9});
+                    
+                    const torusGeom = new THREE.TorusGeometry(3, 0.3, 8, 32, Math.PI * 1.5);
+                    const torus = new THREE.Mesh(torusGeom, mat);
+                    torus.renderOrder = 999;
+                    group.add(torus);
+                    
+                    const coneGeom = new THREE.ConeGeometry(0.8, 2, 16);
+                    const cone = new THREE.Mesh(coneGeom, mat);
+                    cone.position.set(0, -3, 0); // End of arc
+                    cone.rotation.z = -Math.PI / 2; // Tangent point
+                    cone.renderOrder = 999;
+                    group.add(cone);
+                    
+                    // Central rotation axis line (same stem diameter)
+                    const axisGeom = new THREE.CylinderGeometry(0.3, 0.3, 8, 16);
+                    axisGeom.rotateX(Math.PI / 2); // Align to local Z axis 
+                    const axisLine = new THREE.Mesh(axisGeom, mat);
+                    axisLine.renderOrder = 999;
+                    group.add(axisLine);
+                    
+                    const quaternion = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0,0,1), vec);
+                    group.applyQuaternion(quaternion);
+                    group.position.copy(center);
+                    loadHelpersGroup.add(group);
+                }
+            };
+
+            groups.forEach(g => {
+                g.loads.forEach(load => drawLoad(load, g.regions.map(r=>r.csgMesh)));
+            });
+            regions.filter(r=>!r.groupId).forEach(r => {
+                r.loads.forEach(load => drawLoad(load, [r.csgMesh]));
+            });
+        }
+
+        // --- 6. UI Logic (Tabs & Tree) ---
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                btn.classList.add('active');
+                document.getElementById(btn.getAttribute('data-target')).classList.add('active');
+            });
+        });
+
+        document.getElementById('analysisType').addEventListener('change', (e) => {
+            document.querySelectorAll('.analysis-subpanel').forEach(p => p.style.display = 'none');
+            document.getElementById(`panel_${e.target.value}`).style.display = 'block';
+        });
+
+        function updateSidebarTree() {
+            const list = document.getElementById('regionTree');
+            list.innerHTML = '';
+            
+            groups.forEach(g => {
+                const gDiv = document.createElement('div');
+                gDiv.className = `group-card ${(activeGroup === g && !activePrimitive) ? 'active' : ''}`;
+                
+                const gHeader = document.createElement('div');
+                gHeader.className = 'group-header';
+                gHeader.setAttribute('data-gid', g.id); // For selection delegation
+                let tags = '';
+                if (Object.values(g.dofs).some(v=>v)) tags += '<span class="tag-c">C</span>';
+                if(g.loads.some(l => l.type === 'force')) tags += '<span class="tag-l">F</span>';
+                if(g.loads.some(l => l.type === 'moment')) tags += '<span class="tag-l">M</span>';
+                
+                gHeader.innerHTML = `
+                    <span>[Group] ${g.name} ${tags}</span>
+                    <div>
+                        <button class="ungroup-btn" data-gid="${g.id}" style="background:#e67e22; padding:2px 6px; font-size:0.75rem; margin-right:5px; color:white; border:none;">UnG</button>
+                        <button class="delete-btn del-group" data-gid="${g.id}">Del</button>
+                    </div>
+                `;
+                gDiv.appendChild(gHeader);
+
+                g.regions.forEach(r => renderRegionToTree(r, gDiv, true));
+                list.appendChild(gDiv);
+            });
+
+            regions.filter(r => !r.groupId).forEach(region => {
+                renderRegionToTree(region, list, false);
+            });
+
+            regions.forEach(r => {
+                r.primitives.forEach(p => {
+                    p.wireframe.visible = (r === activeRegion || (activeGroup && r.groupId === activeGroup.id));
+                    p.wireframe.material.opacity = (p === activePrimitive) ? 1.0 : 0.2;
+                });
+            });
+        }
+
+        function renderRegionToTree(region, container, inGroup) {
+            const rDiv = document.createElement('div');
+            rDiv.className = `region-card ${(activeRegion === region && !activePrimitive) ? 'active' : ''} ${inGroup ? 'in-group' : ''}`;
+            
+            const rHeader = document.createElement('div');
+            rHeader.className = 'region-header';
+            rHeader.setAttribute('data-rid', region.id); // For selection delegation
+            let tags = '';
+            if(!inGroup && Object.values(region.dofs).some(v=>v)) tags += '<span class="tag-c">C</span>';
+            if(!inGroup && region.loads.some(l=>l.type==='force')) tags += '<span class="tag-l">F</span>';
+            if(!inGroup && region.loads.some(l=>l.type==='moment')) tags += '<span class="tag-l">M</span>';
+            
+            rHeader.innerHTML = `
+                <div style="display:flex; align-items:center;">
+                    ${!inGroup ? `<input type="checkbox" class="region-cb" data-id="${region.id}" style="margin-right: 8px;">` : ''}
+                    <span><span class="type-${region.type}">[${region.type.charAt(0).toUpperCase()}]</span> ${region.name} ${tags}</span>
+                </div>
+                <div>
+                    <button class="dup-btn dup-region" data-id="${region.id}">Dup</button>
+                    <button class="delete-btn del-region" data-id="${region.id}">Del</button>
+                </div>
+            `;
+            rDiv.appendChild(rHeader);
+            
+            const pList = document.createElement('div');
+            pList.className = 'primitive-list';
+            region.primitives.forEach(prim => {
+                const pItem = document.createElement('div');
+                pItem.className = `primitive-item ${activePrimitive === prim ? 'active' : ''}`;
+                pItem.setAttribute('data-rid', region.id);
+                pItem.setAttribute('data-pid', prim.id); // For selection delegation
+                pItem.innerHTML = `
+                    <span>${prim.name}</span>
+                    <div>
+                        <button class="dup-btn dup-prim" data-rid="${region.id}" data-pid="${prim.id}">Dup</button>
+                        <button class="delete-btn del-prim" data-rid="${region.id}" data-pid="${prim.id}">X</button>
+                    </div>
+                `;
+                pList.appendChild(pItem);
+            });
+            rDiv.appendChild(pList);
+            container.appendChild(rDiv);
+        }
+
+        // Updated Event Delegation for the entire Tree
+        document.getElementById('regionTree').addEventListener('click', e => {
+            // Ignore native checkbox toggling from bubbling up as a selection click
+            if (e.target.closest('input')) return; 
+
+            const btnDelReg = e.target.closest('.del-region');
+            const btnDelPrim = e.target.closest('.del-prim');
+            const btnDelGrp = e.target.closest('.del-group');
+            const btnUnGrp = e.target.closest('.ungroup-btn');
+            const btnDupReg = e.target.closest('.dup-region');
+            const btnDupPrim = e.target.closest('.dup-prim');
+
+            if(btnDelReg) {
+                const r = regions.find(x => x.id === btnDelReg.getAttribute('data-id'));
+                if(activeRegion === r) clearSelection();
+                scene.remove(r.csgMesh); r.csgMesh.geometry.dispose(); r.csgMesh.material.dispose(); scene.remove(r.sprite);
+                r.primitives.forEach(p => { scene.remove(p.mesh); p.mesh.geometry.dispose(); p.wireframe.geometry.dispose(); p.wireframe.material.dispose(); });
+                if(r.groupId) { const g = groups.find(g => g.id === r.groupId); if(g) { g.regions.splice(g.regions.indexOf(r), 1); updateGroupSprite(g); } }
+                regions.splice(regions.indexOf(r), 1);
+                updateSidebarTree(); renderAllLoadHelpers(); saveState();
+            }
+            else if(btnDelPrim) {
+                const r = regions.find(x => x.id === btnDelPrim.getAttribute('data-rid'));
+                const p = r.primitives.find(x => x.id === btnDelPrim.getAttribute('data-pid'));
+                
+                if (r.primitives.length <= 1) {
+                    if(activeRegion === r) clearSelection();
+                    scene.remove(r.csgMesh); r.csgMesh.geometry.dispose(); r.csgMesh.material.dispose(); scene.remove(r.sprite);
+                    r.primitives.forEach(prim => { scene.remove(prim.mesh); prim.mesh.geometry.dispose(); prim.wireframe.geometry.dispose(); prim.wireframe.material.dispose(); });
+                    if(r.groupId) { const g = groups.find(g => g.id === r.groupId); if(g) { g.regions.splice(g.regions.indexOf(r), 1); updateGroupSprite(g); } }
+                    regions.splice(regions.indexOf(r), 1);
+                } else {
+                    if(activePrimitive === p) selectRegion(r);
+                    scene.remove(p.mesh); regionPivot.remove(p.mesh);
+                    p.mesh.geometry.dispose(); p.wireframe.geometry.dispose(); p.wireframe.material.dispose();
+                    r.primitives.splice(r.primitives.indexOf(p), 1);
+                    rebuildRegionCSG(r);
+                }
+                updateSidebarTree(); renderAllLoadHelpers(); saveState();
+            }
+            else if(btnDelGrp) {
+                const g = groups.find(x => x.id === btnDelGrp.getAttribute('data-gid'));
+                if(activeGroup === g) clearSelection();
+                g.regions.forEach(r => {
+                    scene.remove(r.csgMesh); r.csgMesh.geometry.dispose(); r.csgMesh.material.dispose(); scene.remove(r.sprite);
+                    r.primitives.forEach(p => { scene.remove(p.mesh); p.mesh.geometry.dispose(); });
+                    regions.splice(regions.indexOf(r), 1);
+                });
+                scene.remove(g.sprite);
+                groups.splice(groups.indexOf(g), 1);
+                updateSidebarTree(); renderAllLoadHelpers(); saveState();
+            }
+            else if(btnUnGrp) {
+                const g = groups.find(x => x.id === btnUnGrp.getAttribute('data-gid'));
+                if(activeGroup === g) clearSelection();
+                g.regions.forEach(r => { r.groupId = null; updateRegionSprite(r); });
+                scene.remove(g.sprite);
+                groups.splice(groups.indexOf(g), 1);
+                updateSidebarTree(); renderAllLoadHelpers(); saveState();
+            }
+            else if(btnDupReg) {
+                const r = regions.find(x => x.id === btnDupReg.getAttribute('data-id'));
+                let newR = createRegion(r.type);
+                newR.dofs = JSON.parse(JSON.stringify(r.dofs));
+                newR.dofPanelOpen = r.dofPanelOpen;
+                newR.fixedApplyTo = r.fixedApplyTo;
+                newR.fixedFaces = JSON.parse(JSON.stringify(r.fixedFaces));
+                newR.loads = JSON.parse(JSON.stringify(r.loads));
+                newR.loads.forEach(l => l.id = generateUUID()); 
+                if(r.groupId) { newR.groupId = r.groupId; groups.find(g => g.id === r.groupId).regions.push(newR); }
+                r.primitives.forEach(p => {
+                    p.mesh.updateMatrixWorld(true);
+                    let newP = addPrimitiveToRegion(newR, p.shapeType, p.operation);
+                    let pos = new THREE.Vector3(); let quat = new THREE.Quaternion(); let sca = new THREE.Vector3();
+                    p.mesh.matrixWorld.decompose(pos, quat, sca);
+                    
+                    scene.attach(newP.mesh);
+                    newP.mesh.position.copy(pos); newP.mesh.quaternion.copy(quat); newP.mesh.scale.copy(sca);
+                    newP.mesh.updateMatrixWorld(true);
+                });
+                rebuildRegionCSG(newR);
+                updateSidebarTree(); selectRegion(newR); renderAllLoadHelpers(); saveState();
+            }
+            else if(btnDupPrim) {
+                const r = regions.find(x => x.id === btnDupPrim.getAttribute('data-rid'));
+                const p = r.primitives.find(x => x.id === btnDupPrim.getAttribute('data-pid'));
+                let newP = addPrimitiveToRegion(r, p.shapeType, p.operation);
+                
+                p.mesh.updateMatrixWorld(true);
+                let pos = new THREE.Vector3(); let quat = new THREE.Quaternion(); let sca = new THREE.Vector3();
+                p.mesh.matrixWorld.decompose(pos, quat, sca);
+                pos.addScalar(0.5); // Provide physical offset
+                
+                scene.attach(newP.mesh);
+                newP.mesh.position.copy(pos);
+                newP.mesh.quaternion.copy(quat);
+                newP.mesh.scale.copy(sca);
+                newP.mesh.updateMatrixWorld(true);
+                
+                if (p.mesh.parent === regionPivot) regionPivot.attach(newP.mesh);
+                
+                rebuildRegionCSG(r); updateSidebarTree(); selectPrimitive(r, newP); renderAllLoadHelpers(); saveState();
+            }
+            // If no button was clicked, handle standard selection
+            else if (!e.target.closest('button')) {
+                const pItem = e.target.closest('.primitive-item');
+                const rHeader = e.target.closest('.region-header');
+                const gHeader = e.target.closest('.group-header');
+
+                if (pItem) {
+                    const rId = pItem.getAttribute('data-rid');
+                    const pId = pItem.getAttribute('data-pid');
+                    const r = regions.find(x => x.id === rId);
+                    const p = r.primitives.find(x => x.id === pId);
+                    if (r && p) selectPrimitive(r, p);
+                } else if (rHeader) {
+                    const rId = rHeader.getAttribute('data-rid');
+                    const r = regions.find(x => x.id === rId);
+                    if (r) selectRegion(r);
+                } else if (gHeader) {
+                    const gId = gHeader.getAttribute('data-gid');
+                    const g = groups.find(x => x.id === gId);
+                    if (g) selectGroup(g);
+                }
+            }
+        });
+
+        document.getElementById('groupSelectedBtn').addEventListener('click', () => {
+            const cbs = document.querySelectorAll('.region-cb:checked');
+            if(cbs.length < 2) { alert("Select at least 2 regions to group."); return; }
+            const rIds = Array.from(cbs).map(cb => cb.getAttribute('data-id'));
+            const selectedRegions = regions.filter(r => rIds.includes(r.id) && r.groupId === null);
+            if(selectedRegions.length < 2) { 
+                alert("Selected regions are invalid or already grouped."); 
+                cbs.forEach(cb => cb.checked = false); 
+                return; 
+            }
+            cbs.forEach(cb => cb.checked = false);
+            let g = createGroup(selectedRegions);
+            g.dofPanelOpen = selectedRegions[0].dofPanelOpen;
+            g.dofs = JSON.parse(JSON.stringify(selectedRegions[0].dofs));
+            g.fixedApplyTo = selectedRegions[0].fixedApplyTo;
+            g.fixedFaces = JSON.parse(JSON.stringify(selectedRegions[0].fixedFaces));
+            g.loads = JSON.parse(JSON.stringify(selectedRegions[0].loads));
+            updateGroupSprite(g); updateSidebarTree(); renderAllLoadHelpers(); saveState();
+        });
+
+        // --- Extracted Coplanar Faces Highlight System ---
+        function updateFaceHighlights(target) {
+            while(faceHighlightsGroup.children.length > 0){
+                let child = faceHighlightsGroup.children[0];
+                faceHighlightsGroup.remove(child);
+                child.geometry.dispose(); child.material.dispose();
+            }
+            if(!target) return;
+            
+            let meshesToSearch = target.regions ? target.regions.map(r=>r.csgMesh) : [target.csgMesh];
+            
+            const buildHighlights = (facesArray, colorHex) => {
+                if(!facesArray || facesArray.length === 0) return;
+                meshesToSearch.forEach(mesh => {
+                    if(!mesh.geometry.attributes.position) return;
+                    const posAttr = mesh.geometry.attributes.position;
+                    const idxAttr = mesh.geometry.index;
+                    
+                    const highlightGeom = new THREE.BufferGeometry();
+                    const highlightPositions = [];
+
+                    facesArray.forEach(faceDef => {
+                        const planeNormal = new THREE.Vector3(faceDef.normal.x, faceDef.normal.y, faceDef.normal.z);
+                        const planePoint = new THREE.Vector3(faceDef.point.x, faceDef.point.y, faceDef.point.z);
+
+                        let numTriangles = idxAttr ? idxAttr.count / 3 : posAttr.count / 3;
+                        for(let i=0; i<numTriangles; i++) {
+                            let iA = idxAttr ? idxAttr.getX(i*3) : i*3;
+                            let iB = idxAttr ? idxAttr.getX(i*3+1) : i*3+1;
+                            let iC = idxAttr ? idxAttr.getX(i*3+2) : i*3+2;
+
+                            let vA = new THREE.Vector3().fromBufferAttribute(posAttr, iA);
+                            let vB = new THREE.Vector3().fromBufferAttribute(posAttr, iB);
+                            let vC = new THREE.Vector3().fromBufferAttribute(posAttr, iC);
+                            
+                            let normal = new THREE.Vector3();
+                            new THREE.Triangle(vA, vB, vC).getNormal(normal);
+
+                            if(normal.dot(planeNormal) > 0.99) {
+                                let dist = Math.abs(planeNormal.dot(new THREE.Vector3().subVectors(vA, planePoint)));
+                                if(dist < 0.01) {
+                                    highlightPositions.push(vA.x, vA.y, vA.z, vB.x, vB.y, vB.z, vC.x, vC.y, vC.z);
+                                }
+                            }
+                        }
+                    });
+
+                    if(highlightPositions.length > 0) {
+                        highlightGeom.setAttribute('position', new THREE.Float32BufferAttribute(highlightPositions, 3));
+                        const highlightMesh = new THREE.Mesh(highlightGeom, new THREE.MeshBasicMaterial({
+                            color: colorHex, side: THREE.DoubleSide, transparent: true, opacity: 0.6, depthTest: false
+                        }));
+                        highlightMesh.matrixAutoUpdate = false;
+                        highlightMesh.applyMatrix4(mesh.matrixWorld);
+                        faceHighlightsGroup.add(highlightMesh);
+                    }
+                });
+            };
+
+            const anyDofs = Object.values(target.dofs).some(v=>v);
+            if (anyDofs && target.fixedApplyTo === 'faces') {
+                buildHighlights(target.fixedFaces, 0x3498db); // Blue
+            }
+            
+            target.loads.forEach(load => {
+                if(load.applyTo === 'faces') {
+                    buildHighlights(load.faces, 0xe67e22); // Orange
+                }
+            });
+        }
+
+        // --- Constraints/Fixed UI Logic ---
+        document.querySelectorAll('.dof-cb').forEach(cb => {
+            cb.addEventListener('change', e => {
+                let target = activeGroup || activeRegion;
+                if(!target) return;
+                
+                target.dofs[e.target.value] = e.target.checked;
+                const anyDofs = Object.values(target.dofs).some(v=>v);
+                
+                if (!anyDofs && selectingFacesFor && selectingFacesFor.type === 'fixed') selectingFacesFor = null;
+
+                renderFixedUI(target);
+                updateFaceHighlights(target);
+                if(activeGroup) updateGroupSprite(activeGroup); else updateRegionSprite(activeRegion);
+                updateSidebarTree();
+                saveState();
+            });
+        });
+
+        function renderFixedUI(target) {
+            const fixedSettings = document.getElementById('fixedSettings');
+            const fixedFacesUI = document.getElementById('fixedFacesUI');
+            const selectBtn = document.getElementById('selectFixedFacesBtn');
+            const isFixedCb = document.getElementById('isFixed');
+            const dofPanel = document.getElementById('dofPanel');
+
+            if (!target) {
+                isFixedCb.checked = false;
+                fixedSettings.style.display = 'none';
+                dofPanel.style.display = 'none';
+                return;
+            }
+
+            const allDofs = target.dofs.Tx && target.dofs.Ty && target.dofs.Tz && target.dofs.Rx && target.dofs.Ry && target.dofs.Rz;
+            const anyDofs = target.dofs.Tx || target.dofs.Ty || target.dofs.Tz || target.dofs.Rx || target.dofs.Ry || target.dofs.Rz;
+            
+            isFixedCb.checked = allDofs;
+            
+            document.querySelectorAll('.dof-cb').forEach(cb => {
+                cb.checked = target.dofs[cb.value];
+            });
+
+            dofPanel.style.display = target.dofPanelOpen ? 'grid' : 'none';
+
+            if (anyDofs) {
+                fixedSettings.style.display = 'block';
+                document.getElementById('fixedApp').value = target.fixedApplyTo || 'bulk';
+                
+                if (target.fixedApplyTo === 'faces') {
+                    fixedFacesUI.style.display = 'flex';
+                    let isSelecting = (selectingFacesFor && selectingFacesFor.type === 'fixed');
+                    selectBtn.innerText = isSelecting ? 'Stop Selecting' : `Select Faces (${target.fixedFaces ? target.fixedFaces.length : 0})`;
+                    selectBtn.style.background = isSelecting ? '#3498db' : 'var(--bg-input)';
+                    selectBtn.style.borderColor = isSelecting ? '#3498db' : 'var(--border)';
+                    if(isSelecting) selectBtn.style.color = 'white'; else selectBtn.style.color = 'var(--text-main)';
+                } else {
+                    fixedFacesUI.style.display = 'none';
+                }
+            } else {
+                fixedSettings.style.display = 'none';
+            }
+        }
+
+        document.getElementById('isFixed').addEventListener('change', e => {
+            let target = activeGroup || activeRegion;
+            if(!target) return;
+            
+            const state = e.target.checked;
+            target.dofs = { Tx: state, Ty: state, Tz: state, Rx: state, Ry: state, Rz: state };
+
+            if(!state && selectingFacesFor && selectingFacesFor.type === 'fixed') selectingFacesFor = null;
+            
+            renderFixedUI(target);
+            updateFaceHighlights(target);
+            if(activeGroup) updateGroupSprite(activeGroup); else updateRegionSprite(activeRegion);
+            updateSidebarTree(); saveState();
+        });
+
+        document.getElementById('fixedApp').addEventListener('change', e => {
+            let target = activeGroup || activeRegion;
+            if(!target) return;
+            target.fixedApplyTo = e.target.value;
+            if(target.fixedApplyTo === 'faces' && !target.fixedFaces) target.fixedFaces = [];
+            if(target.fixedApplyTo === 'bulk' && selectingFacesFor && selectingFacesFor.type === 'fixed') selectingFacesFor = null;
+            renderFixedUI(target);
+            updateFaceHighlights(target);
+            if(activeGroup) updateGroupSprite(activeGroup); else updateRegionSprite(activeRegion);
+            saveState();
+        });
+
+        document.getElementById('selectFixedFacesBtn').addEventListener('click', e => {
+            let target = activeGroup || activeRegion;
+            if(!target) return;
+            if (selectingFacesFor && selectingFacesFor.type === 'fixed') {
+                selectingFacesFor = null;
+            } else {
+                selectingFacesFor = { type: 'fixed', ref: target };
+            }
+            renderFixedUI(target);
+        });
+
+        document.getElementById('clearFixedFacesBtn').addEventListener('click', () => {
+            let target = activeGroup || activeRegion;
+            if(!target) return;
+            target.fixedFaces = [];
+            updateFaceHighlights(target);
+            renderFixedUI(target);
+            if(activeGroup) updateGroupSprite(activeGroup); else updateRegionSprite(activeRegion);
+            saveState();
+        });
+
+        // --- Multiple Loads Rendering ---
+        function renderLoadsUI(target) {
+            const container = document.getElementById('loadsContainer');
+            container.innerHTML = '';
+            if(!target || (target.type === 'obstacle' && !target.regions)) return;
+            
+            target.loads.forEach((load, i) => {
+                const div = document.createElement('div');
+                div.style.background = 'var(--bg-card)'; div.style.padding = '8px'; div.style.marginBottom = '8px'; div.style.border = '1px solid var(--border)'; div.style.borderRadius = '3px';
+                
+                let isSelecting = (selectingFacesFor && selectingFacesFor.type === 'load' && selectingFacesFor.ref === load);
+
+                div.innerHTML = `
+                    <div style="display:flex; justify-content:space-between; margin-bottom:5px; align-items:center;">
+                        <strong style="font-size:0.85rem; color:#4facfe;">Load ${i+1}</strong>
+                        <button class="delete-btn del-load" data-idx="${i}">X</button>
+                    </div>
+                    <label>Type</label>
+                    <select class="load-type" data-idx="${i}" style="margin-bottom:8px;">
+                        <option value="force" ${load.type==='force'?'selected':''}>Force (XYZ)</option>
+                        <option value="moment" ${load.type==='moment'?'selected':''}>Moment (Axis by RHR)</option>
+                    </select>
+                    <label>Apply To</label>
+                    <select class="load-app" data-idx="${i}" style="margin-bottom:8px;">
+                        <option value="bulk" ${(!load.applyTo || load.applyTo==='bulk')?'selected':''}>Bulk Volume</option>
+                        <option value="faces" ${load.applyTo==='faces'?'selected':''}>Specific Faces</option>
+                    </select>
+                    ${load.applyTo === 'faces' ? `
+                        <div style="display:flex; gap:5px; margin-bottom:8px;">
+                            <button class="select-faces-btn" data-idx="${i}" style="background: ${isSelecting ? '#e67e22' : 'var(--bg-input)'}; color: ${isSelecting ? 'white' : 'var(--text-main)'}; border: 1px solid ${isSelecting ? '#e67e22' : 'var(--border)'}; margin:0;">
+                                ${isSelecting ? 'Stop Selecting' : `Select Faces (${load.faces ? load.faces.length : 0})`}
+                            </button>
+                            <button class="clear-faces-btn" data-idx="${i}" style="background:#c53030; margin:0;">Clear</button>
+                        </div>
+                    ` : ''}
+                    <div class="xyz-inputs">
+                        <span>X</span><input type="number" class="l-x" data-idx="${i}" value="${load.vector.x}">
+                        <span>Y</span><input type="number" class="l-y" data-idx="${i}" value="${load.vector.y}">
+                        <span>Z</span><input type="number" class="l-z" data-idx="${i}" value="${load.vector.z}">
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        document.getElementById('addLoadBtn').addEventListener('click', () => {
+            let target = activeGroup || activeRegion;
+            if(target) {
+                target.loads.push({ id: generateUUID(), type: 'force', vector: {x: 0, y: 0, z: -600}, applyTo: 'bulk', faces: [] });
+                renderLoadsUI(target);
+                if(activeGroup) updateGroupSprite(activeGroup); else updateRegionSprite(activeRegion);
+                updateSidebarTree(); renderAllLoadHelpers(); saveState();
+            }
+        });
+
+        document.getElementById('loadsContainer').addEventListener('change', e => {
+            let target = activeGroup || activeRegion;
+            if(!target) return;
+            const idx = e.target.getAttribute('data-idx');
+            if(idx === null) return;
+            const load = target.loads[idx];
+            
+            if(e.target.classList.contains('load-type')) load.type = e.target.value;
+            if(e.target.classList.contains('load-app')) {
+                load.applyTo = e.target.value;
+                if(load.applyTo === 'faces' && !load.faces) load.faces = [];
+                if(load.applyTo === 'bulk' && selectingFacesFor && selectingFacesFor.ref === load) selectingFacesFor = null;
+                updateFaceHighlights(target);
+            }
+            if(e.target.classList.contains('l-x')) load.vector.x = parseFloat(e.target.value);
+            if(e.target.classList.contains('l-y')) load.vector.y = parseFloat(e.target.value);
+            if(e.target.classList.contains('l-z')) load.vector.z = parseFloat(e.target.value);
+            
+            renderLoadsUI(target);
+            if(activeGroup) updateGroupSprite(activeGroup); else updateRegionSprite(activeRegion);
+            updateSidebarTree(); renderAllLoadHelpers(); saveState();
+        });
+
+        document.getElementById('loadsContainer').addEventListener('click', e => {
+            let target = activeGroup || activeRegion;
+            if(!target) return;
+            const idx = e.target.getAttribute('data-idx');
+            if(idx === null) return;
+            const load = target.loads[idx];
+            
+            if(e.target.classList.contains('del-load')) {
+                if(selectingFacesFor && selectingFacesFor.ref === load) selectingFacesFor = null;
+                target.loads.splice(idx, 1);
+                updateFaceHighlights(target);
+                renderLoadsUI(target);
+                if(activeGroup) updateGroupSprite(activeGroup); else updateRegionSprite(activeRegion);
+                updateSidebarTree(); renderAllLoadHelpers(); saveState();
+            } else if(e.target.classList.contains('select-faces-btn')) {
+                if(selectingFacesFor && selectingFacesFor.ref === load) {
+                    selectingFacesFor = null;
+                } else {
+                    selectingFacesFor = { type: 'load', ref: load };
+                }
+                renderLoadsUI(target);
+            } else if(e.target.classList.contains('clear-faces-btn')) {
+                load.faces = [];
+                updateFaceHighlights(target);
+                renderLoadsUI(target);
+                renderAllLoadHelpers();
+                saveState();
+            }
+        });
+
+        // --- 7. Selection & Pivot Syncing ---
+        function clearSelection() {
+            regions.forEach(r => r.primitives.forEach(p => scene.attach(p.mesh)));
+            regionPivot.clear();
+            
+            selectingFacesFor = null;
+            updateFaceHighlights(null);
+            
+            activeRegion = null; activeGroup = null; activePrimitive = null;
+            transformControl.detach();
+            document.getElementById('propertiesPanel').style.display = 'none';
+            document.getElementById('addPrimBtn').disabled = true;
+            renderFixedUI(null);
+            renderLoadsUI(null);
+        }
+
+        function selectGroup(g) {
+            clearSelection();
+            activeGroup = g;
+            
+            let box = new THREE.Box3();
+            g.regions.forEach(r => {
+                r.csgMesh.geometry.computeBoundingBox();
+                if(r.csgMesh.geometry.boundingBox) {
+                    let rBox = r.csgMesh.geometry.boundingBox.clone();
+                    rBox.applyMatrix4(r.csgMesh.matrixWorld);
+                    box.union(rBox);
+                }
+            });
+            if(box.isEmpty()) box.setFromCenterAndSize(new THREE.Vector3(), new THREE.Vector3(1,1,1));
+            box.getCenter(regionPivot.position);
+            regionPivot.rotation.set(0,0,0);
+            regionPivot.scale.set(1,1,1);
+            regionPivot.updateMatrixWorld(true);
+
+            g.regions.forEach(r => { r.primitives.forEach(p => regionPivot.attach(p.mesh)); });
+            transformControl.attach(regionPivot);
+
+            document.getElementById('addPrimBtn').disabled = true; 
+            document.getElementById('propertiesPanel').style.display = 'block';
+            document.getElementById('propTransform').style.display = 'block';
+            document.getElementById('transformTitle').innerText = 'Group Transform (World Pivot)';
+            
+            document.getElementById('propRegion').style.display = 'block';
+            
+            renderFixedUI(g);
+            renderLoadsUI(g);
+            updateFaceHighlights(g);
+            
+            updateUIFromTransform();
+            updateSidebarTree();
+        }
+
+        function selectRegion(region) {
+            clearSelection();
+            activeRegion = region;
+            
+            region.csgMesh.geometry.computeBoundingBox();
+            const box = region.csgMesh.geometry.boundingBox;
+            if (box && !box.isEmpty()) box.getCenter(regionPivot.position);
+            else regionPivot.position.set(0, 0, 0);
+            
+            regionPivot.rotation.set(0, 0, 0);
+            regionPivot.scale.set(1, 1, 1);
+            regionPivot.updateMatrixWorld(true);
+            
+            region.primitives.forEach(p => regionPivot.attach(p.mesh));
+            transformControl.attach(regionPivot);
+
+            document.getElementById('addPrimBtn').disabled = false;
+            document.getElementById('propertiesPanel').style.display = 'block';
+            document.getElementById('propTransform').style.display = 'block';
+            document.getElementById('transformTitle').innerText = 'Region Transform (Group Pivot)';
+            
+            if (region.type === 'preserve') {
+                document.getElementById('propRegion').style.display = 'block';
+                if(region.groupId) {
+                    const g = groups.find(x=>x.id === region.groupId);
+                    renderFixedUI(g);
+                    renderLoadsUI(g);
+                    updateFaceHighlights(g);
+                } else {
+                    renderFixedUI(region);
+                    renderLoadsUI(region);
+                    updateFaceHighlights(region);
+                }
+            } else {
+                document.getElementById('propRegion').style.display = 'none';
+            }
+            updateUIFromTransform();
+            updateSidebarTree();
+        }
+
+        function selectPrimitive(region, prim) {
+            clearSelection();
+            activeRegion = region; activePrimitive = prim;
+            transformControl.attach(prim.mesh); 
+
+            document.getElementById('addPrimBtn').disabled = false;
+            document.getElementById('propertiesPanel').style.display = 'block';
+            document.getElementById('propRegion').style.display = 'none';
+            document.getElementById('propTransform').style.display = 'block';
+            document.getElementById('transformTitle').innerText = 'Shape Transform (World Coordinates)';
+            
+            updateUIFromTransform();
+            updateSidebarTree();
+        }
+
+        document.getElementById('addRegionBtn').addEventListener('click', () => {
+            const type = document.getElementById('newRegionType').value;
+            const region = createRegion(type);
+            addPrimitiveToRegion(region, 'cuboid', 'add');
+            updateSidebarTree(); selectRegion(region); saveState();
+        });
+
+        document.getElementById('addPrimBtn').addEventListener('click', () => {
+            if (!activeRegion) return;
+            const shape = document.getElementById('newPrimShape').value;
+            const op = document.getElementById('newPrimOp').value;
+            const prim = addPrimitiveToRegion(activeRegion, shape, op);
+            updateSidebarTree(); selectPrimitive(activeRegion, prim); saveState();
+        });
+
+        function clearAll() {
+            clearSelection();
+            regions.forEach(region => {
+                scene.remove(region.csgMesh); region.csgMesh.geometry.dispose(); region.csgMesh.material.dispose(); scene.remove(region.sprite);
+                region.primitives.forEach(p => { scene.remove(p.mesh); p.mesh.geometry.dispose(); p.wireframe.geometry.dispose(); p.wireframe.material.dispose(); });
+            });
+            groups.forEach(g => { scene.remove(g.sprite); });
+            regions = []; groups = []; regionCounter = 0; groupCounter = 0;
+            renderAllLoadHelpers();
+        }
+
+        document.getElementById('clearDomainBtn').addEventListener('click', () => {
+            if (!confirm("Are you sure you want to completely clear the domain? All regions and shapes will be lost.")) return;
+            clearAll(); updateSidebarTree(); saveState();
+        });
+
+        function updateUIFromTransform() {
+            const obj = transformControl.object;
+            if (!obj) return;
+            document.getElementById('posX').value = obj.position.x.toFixed(2);
+            document.getElementById('posY').value = obj.position.y.toFixed(2);
+            document.getElementById('posZ').value = obj.position.z.toFixed(2);
+            document.getElementById('scaX').value = obj.scale.x.toFixed(2);
+            document.getElementById('scaY').value = obj.scale.y.toFixed(2);
+            document.getElementById('scaZ').value = obj.scale.z.toFixed(2);
+            document.getElementById('rotX').value = THREE.MathUtils.radToDeg(obj.rotation.x).toFixed(1);
+            document.getElementById('rotY').value = THREE.MathUtils.radToDeg(obj.rotation.y).toFixed(1);
+            document.getElementById('rotZ').value = THREE.MathUtils.radToDeg(obj.rotation.z).toFixed(1);
+        }
+
+        function applyUIToTransform() {
+            const obj = transformControl.object;
+            if (!obj) return;
+            
+            const oldPos = obj.position.clone();
+            const oldRot = obj.rotation.clone();
+            const oldScale = obj.scale.clone();
+            
+            obj.position.set(parseFloat(document.getElementById('posX').value), parseFloat(document.getElementById('posY').value), parseFloat(document.getElementById('posZ').value));
+            obj.scale.set(parseFloat(document.getElementById('scaX').value), parseFloat(document.getElementById('scaY').value), parseFloat(document.getElementById('scaZ').value));
+            obj.rotation.set(THREE.MathUtils.degToRad(parseFloat(document.getElementById('rotX').value)), THREE.MathUtils.degToRad(parseFloat(document.getElementById('rotY').value)), THREE.MathUtils.degToRad(parseFloat(document.getElementById('rotZ').value)));
+            obj.updateMatrixWorld(true);
+
+            const bbox = new THREE.Box3().setFromObject(obj);
+            const domX = parseFloat(document.getElementById('domX').value) || 40;
+            const domY = parseFloat(document.getElementById('domY').value) || 10;
+            const domZ = parseFloat(document.getElementById('domZ').value) || 10;
+
+            if (bbox.min.x < -0.01 || bbox.max.x > domX + 0.01 || bbox.min.y < -0.01 || bbox.max.y > domY + 0.01 || bbox.min.z < -0.01 || bbox.max.z > domZ + 0.01) {
+                obj.position.copy(oldPos); obj.rotation.copy(oldRot); obj.scale.copy(oldScale); obj.updateMatrixWorld(true);
+                updateUIFromTransform(); alert("Transformation out of domain bounds! (Reverted)");
+            } else {
+                safePos.copy(obj.position); safeQuat.copy(obj.quaternion); safeScale.copy(obj.scale);
+                if (activeGroup) activeGroup.regions.forEach(r => rebuildRegionCSG(r));
+                else if (activeRegion) rebuildRegionCSG(activeRegion);
+                renderAllLoadHelpers();
+                saveState();
+            }
+        }
+        ['posX', 'posY', 'posZ', 'scaX', 'scaY', 'scaZ', 'rotX', 'rotY', 'rotZ'].forEach(id => {
+            document.getElementById(id).addEventListener('change', applyUIToTransform);
+            document.getElementById(id).addEventListener('keydown', (e) => { if (e.key === 'Enter') applyUIToTransform(); });
+        });
+
+        const modes = { 'modeTranslate': 'translate', 'modeRotate': 'rotate', 'modeScale': 'scale' };
+        for (const [btnId, modeStr] of Object.entries(modes)) {
+            document.getElementById(btnId).addEventListener('click', (e) => {
+                transformControl.setMode(modeStr);
+                document.querySelectorAll('.btn-toggle').forEach(b => b.classList.remove('active'));
+                e.target.classList.add('active');
+            });
+        }
+
+        // --- 8. Undo System, State & Export ---
+        let undoStack = [];
+        let isRestoring = false;
+
+        function serializeState() {
+            const analysisType = document.getElementById('analysisType').value;
+            let analysisParams = {};
+            if (analysisType === 'conf') {
+                analysisParams = {
+                    alpha_proportion: parseFloat(document.getElementById('alpha_prop').value),
+                    offset_proportion: parseFloat(document.getElementById('offset_prop').value),
+                    max_mesh_characteristic_length: parseFloat(document.getElementById('max_char').value),
+                    num_cells_cutoff: parseFloat(document.getElementById('num_cutoff').value)
+                };
+            } else if (analysisType === 'reg') {
+                analysisParams = { voxel_size_mm: parseFloat(document.getElementById('vox_size_reg').value) };
+            } else if (analysisType === 'cg') {
+                analysisParams = {
+                    voxel_size_mm: parseFloat(document.getElementById('vox_size_cg').value),
+                    pcg_max_iters: parseInt(document.getElementById('pcg_iters').value),
+                    pcg_tol: parseFloat(document.getElementById('pcg_tol').value)
+                };
+            }
+
+            return {
+                optimisation_name: document.getElementById('optName').value.trim(),
+                domain: {
+                    x: parseFloat(document.getElementById('domX').value),
+                    y: parseFloat(document.getElementById('domY').value),
+                    z: parseFloat(document.getElementById('domZ').value)
+                },
+                analysis: {
+                    type: analysisType,
+                    youngs_modulus: parseFloat(document.getElementById('youngs').value),
+                    poisson_ratio: parseFloat(document.getElementById('poisson').value),
+                    parameters: analysisParams
+                },
+                optimiser: {
+                    outer_loop_max_iters: parseInt(document.getElementById('out_iters').value),
+                    inner_loop_max_iters: parseInt(document.getElementById('in_iters').value),
+                    outer_loop_convergence_threshold: parseFloat(document.getElementById('out_conv').value),
+                    inner_loop_convergence_threshold: parseFloat(document.getElementById('in_conv').value),
+                    target_volume: parseFloat(document.getElementById('target_vol').value),
+                    beta: parseFloat(document.getElementById('beta').value),
+                    void_density: parseFloat(document.getElementById('void_dens').value),
+                    mu1: parseFloat(document.getElementById('mu1').value),
+                    mu2: parseFloat(document.getElementById('mu2').value),
+                    mu1_decay_factor: parseFloat(document.getElementById('mu1_decay').value),
+                    mu2_decay_factor: parseFloat(document.getElementById('mu2_decay').value),
+                    dt: parseFloat(document.getElementById('dt').value),
+                    initial_noise_multiplier: parseFloat(document.getElementById('noise_mult').value),
+                    solid_value: parseFloat(document.getElementById('solid_val').value),
+                    void_value: parseFloat(document.getElementById('void_val').value),
+                    g2_clamp_min: parseFloat(document.getElementById('g2_min').value),
+                    g2_clamp_max: parseFloat(document.getElementById('g2_max').value),
+                    phi_clamp_min: parseFloat(document.getElementById('phi_min').value),
+                    phi_clamp_max: parseFloat(document.getElementById('phi_max').value),
+                    constant_iters_for_convergence: parseInt(document.getElementById('const_iters').value)
+                },
+                groups: groups.map(g => ({
+                    id: g.id,
+                    name: g.name,
+                    dofPanelOpen: g.dofPanelOpen,
+                    dofs: g.dofs,
+                    fixedApplyTo: g.fixedApplyTo,
+                    fixedFaces: g.fixedFaces,
+                    loads: g.loads
+                })),
+                regions: regions.map(r => {
+                    return {
+                        id: r.id,
+                        name: r.name,
+                        type: r.type,
+                        groupId: r.groupId,
+                        dofPanelOpen: r.dofPanelOpen,
+                        dofs: r.dofs,
+                        fixedApplyTo: r.fixedApplyTo,
+                        fixedFaces: r.fixedFaces,
+                        loads: r.loads,
+                        primitives: r.primitives.map(p => {
+                            const pos = new THREE.Vector3(); const quat = new THREE.Quaternion(); const scale = new THREE.Vector3();
+                            p.mesh.matrixWorld.decompose(pos, quat, scale);
+                            const rot = new THREE.Euler().setFromQuaternion(quat);
+                            return {
+                                id: p.id,
+                                shape: p.shapeType, operation: p.operation,
+                                world_position: { x: pos.x, y: pos.y, z: pos.z },
+                                world_scale: { x: scale.x, y: scale.y, z: scale.z },
+                                world_rotation_deg: { x: THREE.MathUtils.radToDeg(rot.x), y: THREE.MathUtils.radToDeg(rot.y), z: THREE.MathUtils.radToDeg(rot.z) }
+                            };
+                        })
+                    };
+                })
+            };
+        }
+
+        function deserializeState(data) {
+            clearAll(); 
+
+            if (data.domain) {
+                if (data.domain.x !== undefined) document.getElementById('domX').value = data.domain.x;
+                if (data.domain.y !== undefined) document.getElementById('domY').value = data.domain.y;
+                if (data.domain.z !== undefined) document.getElementById('domZ').value = data.domain.z;
+                updateDomain(); 
+            }
+            if (data.optimisation_name) document.getElementById('optName').value = data.optimisation_name;
+            if (data.analysis) {
+                if (data.analysis.type) {
+                    document.getElementById('analysisType').value = data.analysis.type;
+                    document.getElementById('analysisType').dispatchEvent(new Event('change'));
+                }
+                if (data.analysis.youngs_modulus !== undefined) document.getElementById('youngs').value = data.analysis.youngs_modulus;
+                if (data.analysis.poisson_ratio !== undefined) document.getElementById('poisson').value = data.analysis.poisson_ratio;
+                const params = data.analysis.parameters;
+                if (params) {
+                    if (params.alpha_proportion !== undefined) document.getElementById('alpha_prop').value = params.alpha_proportion;
+                    if (params.offset_proportion !== undefined) document.getElementById('offset_prop').value = params.offset_proportion;
+                    if (params.max_mesh_characteristic_length !== undefined) document.getElementById('max_char').value = params.max_mesh_characteristic_length;
+                    if (params.num_cells_cutoff !== undefined) document.getElementById('num_cutoff').value = params.num_cells_cutoff;
+                    if (params.voxel_size_mm !== undefined) { document.getElementById('vox_size_reg').value = params.voxel_size_mm; document.getElementById('vox_size_cg').value = params.voxel_size_mm; }
+                    if (params.pcg_max_iters !== undefined) document.getElementById('pcg_iters').value = params.pcg_max_iters;
+                    if (params.pcg_tol !== undefined) document.getElementById('pcg_tol').value = params.pcg_tol;
+                }
+            }
+            if (data.optimiser) {
+                const o = data.optimiser;
+                const optMap = { 'out_iters': 'outer_loop_max_iters', 'in_iters': 'inner_loop_max_iters', 'out_conv': 'outer_loop_convergence_threshold', 'in_conv': 'inner_loop_convergence_threshold', 'target_vol': 'target_volume', 'beta': 'beta', 'dt': 'dt', 'const_iters': 'constant_iters_for_convergence', 'mu1': 'mu1', 'mu1_decay': 'mu1_decay_factor', 'mu2': 'mu2', 'mu2_decay': 'mu2_decay_factor', 'solid_val': 'solid_value', 'void_val': 'void_value', 'void_dens': 'void_density', 'noise_mult': 'initial_noise_multiplier', 'g2_min': 'g2_clamp_min', 'g2_max': 'g2_clamp_max', 'phi_min': 'phi_clamp_min', 'phi_max': 'phi_clamp_max'};
+                for (const [id, key] of Object.entries(optMap)) { if (o[key] !== undefined) document.getElementById(id).value = o[key]; }
+            }
+            
+            if (data.groups) {
+                data.groups.forEach(gData => {
+                    let g = { 
+                        id: gData.id || generateUUID(), 
+                        name: gData.name || `Group ${++groupCounter}`, 
+                        dofPanelOpen: gData.dofPanelOpen || false,
+                        dofs: {Tx:false, Ty:false, Tz:false, Rx:false, Ry:false, Rz:false},
+                        fixedApplyTo: gData.fixedApplyTo || 'bulk',
+                        fixedFaces: gData.fixedFaces || [],
+                        loads: gData.loads || [], 
+                        regions: [], 
+                        sprite: createTextSprite() 
+                    };
+                    if (gData.dofs) g.dofs = gData.dofs;
+                    scene.add(g.sprite); groups.push(g);
+                });
+            }
+
+            if (data.regions) {
+                data.regions.forEach(rData => {
+                    let r = createRegion(rData.type);
+                    r.id = rData.id || r.id; 
+                    r.name = rData.name || r.name;
+                    r.groupId = rData.groupId || null;
+                    r.dofPanelOpen = rData.dofPanelOpen || false;
+                    
+                    let possibleInt = parseInt(r.name.replace('Region ', ''));
+                    if(!isNaN(possibleInt) && possibleInt > regionCounter) regionCounter = possibleInt;
+
+                    if (rData.loads) {
+                        r.loads = rData.loads;
+                    } else if (rData.has_load || rData.has_load === undefined) {
+                        r.loads = (rData.has_load && rData.load_vector) ? [{ id: generateUUID(), type: rData.load_type || 'force', vector: rData.load_vector, applyTo: 'bulk', faces: [] }] : [];
+                    }
+                    
+                    let legacyIsFixed = rData.isFixed !== undefined ? rData.isFixed : (rData.is_fixed || false);
+                    if (rData.constrained_dofs) {
+                        for(let key in r.dofs) {
+                            r.dofs[key] = rData.constrained_dofs.includes(key);
+                        }
+                    } else if (rData.dofs) {
+                        r.dofs = rData.dofs;
+                    } else if (legacyIsFixed) {
+                        r.dofs = {Tx:true, Ty:true, Tz:true, Rx:true, Ry:true, Rz:true};
+                    }
+
+                    r.fixedApplyTo = rData.fixedApplyTo || rData.fixed_apply_to || 'bulk';
+                    r.fixedFaces = rData.fixedFaces || rData.fixed_faces || [];
+                    
+                    if(r.groupId) { const g = groups.find(g => g.id === r.groupId); if(g) g.regions.push(r); }
+
+                    if (rData.primitives) {
+                        rData.primitives.forEach(pData => {
+                            let p = addPrimitiveToRegion(r, pData.shape, pData.operation);
+                            p.id = pData.id || p.id;
+                            if (pData.world_position) p.mesh.position.set(pData.world_position.x, pData.world_position.y, pData.world_position.z);
+                            if (pData.world_scale) p.mesh.scale.set(pData.world_scale.x, pData.world_scale.y, pData.world_scale.z);
+                            if (pData.world_rotation_deg) p.mesh.rotation.set(THREE.MathUtils.degToRad(pData.world_rotation_deg.x), THREE.MathUtils.degToRad(pData.world_rotation_deg.y), THREE.MathUtils.degToRad(pData.world_rotation_deg.z));
+                            p.mesh.updateMatrixWorld(true);
+                        });
+                    }
+                    rebuildRegionCSG(r);
+                });
+            }
+
+            groups.forEach(g => updateGroupSprite(g));
+            updateSidebarTree();
+            renderAllLoadHelpers();
+        }
+
+        function saveState() {
+            if(isRestoring) return;
+            const state = JSON.stringify(serializeState());
+            if(undoStack.length > 0 && undoStack[undoStack.length - 1] === state) return;
+            undoStack.push(state);
+            if(undoStack.length > 11) undoStack.shift(); 
+        }
+
+        document.getElementById('undoBtn').addEventListener('click', () => {
+            if(undoStack.length <= 1) return; 
+            undoStack.pop(); 
+            const prevStateStr = undoStack[undoStack.length - 1];
+            isRestoring = true;
+            deserializeState(JSON.parse(prevStateStr));
+            isRestoring = false;
+        });
+
+        document.querySelectorAll('input, select').forEach(el => {
+            if(el.id !== 'fileInput' && !el.classList.contains('dof-cb')) {
+                el.addEventListener('change', () => saveState());
+            }
+        });
+
+        // --- C: Comprehensive FEA Readiness Validation ---
+        document.getElementById('exportBtn').addEventListener('click', () => {
+            document.querySelectorAll('input.error').forEach(el => el.classList.remove('error'));
+            let isValid = true;
+            for (let input of document.querySelectorAll('input[data-req="true"]')) {
+                if (input.closest('.analysis-subpanel') && input.closest('.analysis-subpanel').style.display === 'none') continue;
+                if (input.value.trim() === '' || (input.type === 'number' && isNaN(parseFloat(input.value)))) {
+                    input.classList.add('error'); isValid = false;
+                    const tabContent = input.closest('.tab-content');
+                    if (tabContent && !tabContent.classList.contains('active')) document.querySelector(`.tab-btn[data-target="${tabContent.id}"]`).click();
+                }
+            }
+            if (!isValid) { alert("Please fix the highlighted invalid or missing fields before exporting."); return; }
+            
+            let hasConstraint = { Tx: false, Ty: false, Tz: false, Rx: false, Ry: false, Rz: false };
+            let hasLoad = { Fx: false, Fy: false, Fz: false, Mx: false, My: false, Mz: false };
+            
+            const checkReadiness = (target) => {
+                if (target.loads) {
+                    target.loads.forEach(l => {
+                        if (l.type === 'force') {
+                            if (Math.abs(l.vector.x) > 1e-6) hasLoad.Fx = true;
+                            if (Math.abs(l.vector.y) > 1e-6) hasLoad.Fy = true;
+                            if (Math.abs(l.vector.z) > 1e-6) hasLoad.Fz = true;
+                        } else if (l.type === 'moment') {
+                            if (Math.abs(l.vector.x) > 1e-6) hasLoad.Mx = true;
+                            if (Math.abs(l.vector.y) > 1e-6) hasLoad.My = true;
+                            if (Math.abs(l.vector.z) > 1e-6) hasLoad.Mz = true;
+                        }
+                    });
+                }
+                if (target.dofs) {
+                    if (target.dofs.Tx) hasConstraint.Tx = true;
+                    if (target.dofs.Ty) hasConstraint.Ty = true;
+                    if (target.dofs.Tz) hasConstraint.Tz = true;
+                    if (target.dofs.Rx) hasConstraint.Rx = true;
+                    if (target.dofs.Ry) hasConstraint.Ry = true;
+                    if (target.dofs.Rz) hasConstraint.Rz = true;
+                }
+            };
+            
+            groups.forEach(checkReadiness);
+            regions.filter(r => !r.groupId && r.type !== 'obstacle').forEach(checkReadiness);
+            
+            let loadApplied = Object.values(hasLoad).some(v => v);
+            let constraintApplied = Object.values(hasConstraint).some(v => v);
+
+            if (!loadApplied || !constraintApplied) {
+                alert("Validation Error: Your problem is not sufficiently loaded and constrained for FEA.\n\nPlease ensure you have applied at least one load and constrained at least one degree of freedom (DOF) in the Domain tab before exporting.");
+                return; // Stop export
+            }
+
+            let errors = [];
+
+            // Directly check for unresisted forces
+            if (hasLoad.Fx && !hasConstraint.Tx) errors.push("- Force applied in X direction, but translation 'Tx' is not constrained.");
+            if (hasLoad.Fy && !hasConstraint.Ty) errors.push("- Force applied in Y direction, but translation 'Ty' is not constrained.");
+            if (hasLoad.Fz && !hasConstraint.Tz) errors.push("- Force applied in Z direction, but translation 'Tz' is not constrained.");
+
+            // Directly check for unresisted moments
+            if (hasLoad.Mx && !hasConstraint.Rx && !hasConstraint.Ty && !hasConstraint.Tz) errors.push("- Moment applied around X axis, but neither 'Rx', 'Ty', nor 'Tz' are constrained to resist it.");
+            if (hasLoad.My && !hasConstraint.Ry && !hasConstraint.Tx && !hasConstraint.Tz) errors.push("- Moment applied around Y axis, but neither 'Ry', 'Tx', nor 'Tz' are constrained to resist it.");
+            if (hasLoad.Mz && !hasConstraint.Rz && !hasConstraint.Tx && !hasConstraint.Ty) errors.push("- Moment applied around Z axis, but neither 'Rz', 'Tx', nor 'Ty' are constrained to resist it.");
+
+            // Check for strict global rigid body motion blocks (singular stiffness matrix prevention)
+            if (!hasConstraint.Tx) errors.push("- Global Rigid Body Translation in X is possible (Missing 'Tx' constraint).");
+            if (!hasConstraint.Ty) errors.push("- Global Rigid Body Translation in Y is possible (Missing 'Ty' constraint).");
+            if (!hasConstraint.Tz) errors.push("- Global Rigid Body Translation in Z is possible (Missing 'Tz' constraint).");
+
+            // Deduplicate errors if applicable
+            errors = [...new Set(errors)];
+
+            if (errors.length > 0) {
+                alert("Validation Error: Unrunnable FEA Problem Setup!\n\nThe following issues will cause the solver to fail due to a singular stiffness matrix or unrestrained rigid body motion:\n\n" + errors.join("\n"));
+                return; // Stop export
+            }
+
+            const state = serializeState();
+            
+            let backendProblemDef = JSON.parse(JSON.stringify(state));
+            delete backendProblemDef.groups;
+            
+            backendProblemDef.regions = backendProblemDef.regions.map(r => {
+                let targetDofs = r.dofs;
+                let fixedApp = r.fixedApplyTo;
+                let fixedFac = r.fixedFaces;
+                let loads = r.loads;
+
+                if (r.groupId) {
+                    let g = state.groups.find(g => g.id === r.groupId);
+                    if(g) { 
+                        targetDofs = g.dofs;
+                        fixedApp = g.fixedApplyTo; 
+                        fixedFac = g.fixedFaces; 
+                        loads = g.loads; 
+                    }
+                }
+                let c_dofs = Object.keys(targetDofs).filter(k=>targetDofs[k]);
+                return {
+                    name: r.name,
+                    type: r.type,
+                    is_fixed: c_dofs.length === 6,
+                    constrained_dofs: c_dofs,
+                    fixed_apply_to: fixedApp,
+                    fixed_faces: fixedFac,
+                    loads: loads, 
+                    primitives: r.primitives
+                };
+            });
+
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backendProblemDef, null, 2));
+            const anchor = document.createElement('a');
+            anchor.setAttribute("href", dataStr);
+            anchor.setAttribute("download", `${backendProblemDef.optimisation_name}_problem.json`);
+            document.body.appendChild(anchor); anchor.click(); anchor.remove();
+        });
+
+        document.getElementById('importBtn').addEventListener('click', () => { document.getElementById('fileInput').click(); });
+        document.getElementById('fileInput').addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    isRestoring = true; 
+                    deserializeState(JSON.parse(e.target.result));
+                    document.getElementById('homeCameraBtn').click();
+                    alert("JSON Problem successfully imported.");
+                    isRestoring = false;
+                    saveState(); 
+                } catch (err) {
+                    console.error(err); alert("Error parsing the JSON file. Ensure it is formatted correctly.");
+                }
+            };
+            reader.readAsText(file);
+            event.target.value = '';
+        });
+
+        saveState();
+
+        // --- 9. Render Loop ---
+        function animate() { 
+            requestAnimationFrame(animate); 
+            renderer.render(scene, camera); 
+            axesCamera.position.subVectors(camera.position, orbit.target);
+            axesCamera.position.setLength(4);
+            axesCamera.lookAt(axesScene.position);
+            axesRenderer.render(axesScene, axesCamera);
+        }
+        animate();
+    </script>
+</body>
+</html>
