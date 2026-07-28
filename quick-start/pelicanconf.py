@@ -6,7 +6,7 @@ SITEURL = ""
 
 PATH = "content"
 
-THEME = "../pelican-themes/bootstrap"
+THEME = "../themes/bootstrap"
 
 TIMEZONE = 'GB'
 
