@@ -5,4 +5,4 @@
 
 `make github`
 
-`ghp-import -m "Generate Pelican site" -b $(GITHUB_PAGES_BRANCH) "$(OUTPUTDIR)"`
+`Ctrl + Shift + R` for a force refresh on the browser that bypasses the local cache.

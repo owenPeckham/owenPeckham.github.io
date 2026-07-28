@@ -31,7 +31,7 @@ LINKS = (
     ("Pelican", "https://getpelican.com/"),
     ("Python.org", "https://www.python.org/"),
     ("Jinja2", "https://palletsprojects.com/p/jinja/"),
-    ("GD Setup Tool", "/gd-setup.html"),
+    ("GD Setup Tool", "/gd_setup.html"),
 )
 
 # Social widget
