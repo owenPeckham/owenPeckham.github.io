@@ -1,10 +1,12 @@
+import os
+
 AUTHOR = 'Owen Peckham'
 SITENAME = 'Owen Peckham'
 SITEURL = ""
 
 PATH = "content"
 
-THEME = "~/pelican-themes/bootstrap"
+THEME = "../pelican-themes/bootstrap"
 
 TIMEZONE = 'GB'
 
@@ -17,18 +19,23 @@ TRANSLATION_FEED_ATOM = None
 AUTHOR_FEED_ATOM = None
 AUTHOR_FEED_RSS = None
 
+STATIC_PATHS = ['extra']
+EXTRA_PATH_METADATA = {
+    'extra/gd-setup.html': {'path': 'gd-setup.html'},
+}
+
 # Blogroll
 LINKS = (
     ("Pelican", "https://getpelican.com/"),
     ("Python.org", "https://www.python.org/"),
     ("Jinja2", "https://palletsprojects.com/p/jinja/"),
-    ("You can modify those links in your config file", "#"),
+    ("GD Setup Tool", "/gd-setup.html"),
 )
 
 # Social widget
 SOCIAL = (
     ("LinkedIn", "https://www.linkedin.com/in/owen-peckham-26a038203"),
-    )
+)
 
 DEFAULT_PAGINATION = False
 

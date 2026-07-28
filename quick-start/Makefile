@@ -70,11 +70,11 @@ devserver-global:
 
 publish:
 
-	rm -rf ../docs/*
+	powershell -Command "if (Test-Path '../docs/*') { Remove-Item -Recurse -Force '../docs/*' }"
 
 	$(PELICAN) "$(INPUTDIR)" -o "$(OUTPUTDIR)" -s "$(PUBLISHCONF)" $(PELICANOPTS)
 	
-	mv output/* ../docs/
+	powershell -Command "Move-Item -Path 'output/*' -Destination '../docs/' -Force"
 
 github: publish
 
