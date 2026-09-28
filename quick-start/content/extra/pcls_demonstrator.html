@@ -758,6 +758,7 @@ legend { font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.08em; te
 }
 .overlay[hidden] { display: none !important; }
 .sheet {
+  position: relative;
   background: var(--panel);
   color: var(--ink);
   border: 1px solid var(--rule);
@@ -769,12 +770,24 @@ legend { font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.08em; te
   padding: 22px 26px 24px;
 }
 .sheet:focus { outline: none; }
-.sheet h2 { font-family: var(--display); font-stretch: 112%; font-weight: 700; font-size: 22px; margin: 0 0 10px; }
+.sheet h2 { font-family: var(--display); font-stretch: 112%; font-weight: 700; font-size: 22px; margin: 0 0 10px; padding-right: 30px; }
 .sheet h3 { font-family: var(--display); font-weight: 650; font-size: 15.5px; margin: 18px 0 6px; }
 .sheet p, .sheet li { font-size: 14px; max-width: 70ch; }
 .sheet ul { padding-left: 20px; }
 .sheet .refs li { margin-bottom: 6px; }
 .sheet .close-row { display: flex; justify-content: flex-end; margin-top: 14px; }
+.sheet .icon-close {
+  position: absolute; top: 14px; right: 14px;
+  width: 28px; height: 28px; padding: 0;
+  display: grid; place-items: center;
+  font-family: var(--mono); font-size: 17px; line-height: 1;
+  color: var(--muted); background: var(--panel);
+  border: 1px solid var(--rule); border-radius: 999px;
+  cursor: pointer;
+}
+.sheet .icon-close:hover, .sheet .icon-close:focus-visible { color: var(--ink); border-color: var(--rule-strong); }
+.sheet .welcome-lede { font-size: 15px; }
+.sheet .welcome-footnote { font-size: 12.5px; color: var(--muted); margin-top: 16px; }
 .banner {
   font-size: 13px;
   background: var(--warn-soft);
@@ -1600,10 +1613,13 @@ legend { font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.08em; te
   </main>
 </div>
 
-<div class="overlay" id="aboutOverlay" hidden>
+<div class="overlay" id="aboutOverlay">
   <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="aboutTitle" tabindex="-1">
+    <button class="icon-close" type="button" id="aboutCloseX" aria-label="Close">&times;</button>
     <h2 id="aboutTitle">About this demonstrator</h2>
-    <p>This page is a from-scratch browser re-implementation of the 3D PCLS topology optimiser in the <code>generative-design/PCLS</code> research code, with its penalised finite-element model and its convergence and connectivity tests. It was written for people meeting topology optimisation for the first time, but the numerics follow the production code line by line: the same element, the same update rule, the same multiplier schedule and the same stopping rules. Run against the production <code>PCLS_Optimiser</code> on five small test problems, with an exact linear solve on the Python side, it stops at the same iteration for the same reason every time, takes every discrete decision identically at every iteration (voxels changing phase, pieces, load path, settled count), and ends with design fields that agree to between 10⁻⁸ and 3 × 10⁻⁵ after 194 to 600 iterations (4 × 10⁻¹¹ after the first).</p>
+    <p class="welcome-lede">This demonstrator was built by <b>Owen Peckham</b>, a PhD researcher in the DMF Lab at the <b>University of Bristol</b>, UK. His research develops the Piecewise Constant Level Set (PCLS) method of topology optimisation, with the aim of building 3D generative-design tool chains that can nucleate new holes in a structure on their own — something most topology-optimisation methods struggle to do without being told in advance where holes should go.</p>
+    <p>This page is a from-scratch, browser-based teaching version of that research code. It introduces PCLS's core idea of representing the design with a piecewise-constant scalar field <i>φ</i> rather than a smoothly varying density, and lets you run it side by side against two other well-established approaches: <b>SIMP</b>, the density-based method behind most topology-optimisation pipelines (e.g. Abaqus'), and the classical <b>level-set</b> method, the method behind most generative-design tool chains because its explicit, sharp boundary is CAD-compatible. Running all three on the same problems is the point of the comparison — it is meant to show where PCLS's ability to nucleate holes actually comes from, and what each method trades off to get it.</p>
+    <p>The numerics follow the production code line by line: the same element, the same update rule, the same multiplier schedule and the same stopping rules. Run against the production <code>PCLS_Optimiser</code> on five small test problems, with an exact linear solve on the Python side, it stops at the same iteration for the same reason every time, takes every discrete decision identically at every iteration (voxels changing phase, pieces, load path, settled count), and ends with design fields that agree to between 10⁻⁸ and 3 × 10⁻⁵ after 194 to 600 iterations (4 × 10⁻¹¹ after the first).</p>
     <h3>What is the same as the research code</h3>
     <ul>
       <li>Trilinear 8-node hexahedra with the kernels' corner ordering, Voigt convention and 2×2×2 Gauss rule; linear ersatz material ρ(φ) with c₁ = 10⁻³; E = 210 GPa, ν = 0.3, 1 mm voxels.</li>
@@ -5519,6 +5535,7 @@ const App = {
     const closeAbout = () => { if (about.hidden) return; about.hidden = true; $('#aboutBtn').focus(); };
     $('#aboutBtn').addEventListener('click', () => { about.hidden = false; sheet.scrollTop = 0; sheet.focus({ preventScroll: true }); });
     $('#aboutClose').addEventListener('click', closeAbout);
+    $('#aboutCloseX').addEventListener('click', closeAbout);
     about.addEventListener('click', (e) => { if (e.target === about) closeAbout(); });
     document.addEventListener('keydown', (e) => {
       if (about.hidden) return;
@@ -5530,6 +5547,8 @@ const App = {
       if (e.shiftKey && (document.activeElement === first || document.activeElement === sheet)) { e.preventDefault(); last.focus(); }
       else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
     });
+    // the about/welcome panel is open by default, so it is the first thing shown on every page load
+    sheet.focus({ preventScroll: true });
     // stop computing while the tab is hidden, pick up again when it comes back
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) { this.resumeOnShow = [this.main, this.twin].filter((r) => r.status === 'running'); for (const r of this.resumeOnShow) this.pause(r); }
