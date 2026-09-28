@@ -22,14 +22,13 @@ ARTICLE_EXCLUDES = ['extra']
 STATIC_PATHS = ['extra']
 EXTRA_PATH_METADATA = {
     'extra/gd_setup.html': {'path': 'gd_setup.html'},
+    'extra/pcls_demonstrator.html': {'path': 'pcls_demonstrator.html'},
 }
 
 # Blogroll
 LINKS = (
-    ("Pelican", "https://getpelican.com/"),
-    ("Python.org", "https://www.python.org/"),
-    ("Jinja2", "https://palletsprojects.com/p/jinja/"),
     ("GD Setup Tool", "/gd_setup.html"),
+    ("PCLS Demonstrator", "/pcls_demonstrator.html"),
 )
 
 # Social widget
