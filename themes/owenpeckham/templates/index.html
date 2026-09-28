@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+{% set NAVACTIVE = 'home' %}
+
+{% block body %}
+<div class="layout">
+
+  <aside class="sidebar">
+    <div class="side-block">
+      <h3>Interactive Tools</h3>
+      <ul>
+        {% for tool in TOOLS %}
+        <li>
+          <a class="{{ 'tool-primary' if tool.primary else 'tool-secondary' }}" href="{{ tool.url }}">{{ tool.label }}</a>
+          {% if tool.note %}<p class="tool-note">{{ tool.note }}</p>{% endif %}
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+    <div class="side-block">
+      <h3>Elsewhere</h3>
+      <ul>
+        {% for link in ELSEWHERE %}
+        <li><a href="{{ link.url }}">{{ link.label }}</a></li>
+        {% endfor %}
+      </ul>
+    </div>
+  </aside>
+
+  <main class="content">
+
+    <div class="intro">
+      <p><!-- TODO (Owen): a couple of sentences on what this site is for -- write it in your own voice, not the CV bio. --></p>
+      <p class="cv-links">Full CV:
+        {% for cv in CV_LINKS %}<a href="{{ cv.url }}">{{ cv.label }}</a>{% if not loop.last %} &middot; {% endif %}{% endfor %}
+      </p>
+    </div>
+
+    <h2 class="section-heading" id="projects">Projects</h2>
+    <p class="section-note">Longer write-ups for these are still to come &mdash; each links to a page that isn't built yet.</p>
+
+    <ul class="projects">
+      {% for proj in pages|selectattr("projectcard")|sort(attribute="order") %}
+      <li class="project">
+        <div class="summary">
+          <span class="meta">{{ proj.metalabel }}</span>
+          <a class="title" href="{{ SITEURL }}/{{ proj.url }}">{{ proj.title }}</a>
+          <p class="blurb">{{ proj.summary }}</p>
+          {% if proj.tool_url %}<a class="tool-link" href="{{ proj.tool_url }}">{{ proj.tool_label }}</a>{% endif %}
+          {% if proj.tool_url2 %}<a class="tool-link secondary" href="{{ proj.tool_url2 }}">{{ proj.tool_label2 }}</a>{% endif %}
+        </div>
+      </li>
+      {% endfor %}
+
+      <!-- TEMPLATE -- to add a new project:
+           1. Create content/pages/new-project.md with metadata:
+                Title: Project Title
+                Save_as: projects/new-project.html
+                URL: projects/new-project.html
+                Projectcard: yes
+                Order: 9
+                Metalabel: Label · Year(s)
+                Summary: One or two sentences for the card (kept separate
+                         from the full write-up below it).
+                Tool_url: /some-tool.html      (optional)
+                Tool_label: -> Try the tool     (optional)
+                Image: new-project.png          (optional hero image, see
+                                                  content/images/projects/)
+           2. Write the full page body underneath the metadata as markdown.
+           No template changes needed -- it'll appear on the grid automatically,
+           sorted by Order. -->
+    </ul>
+
+    <h2 class="section-heading" id="publications">Publications</h2>
+    <p class="section-note">Peer-reviewed papers, most recent first. (+) presenting author, (*) international or non-academic co-authors.</p>
+
+    <!-- TEMPLATE -- to add a new publication, copy an <li> and edit it; the
+         list is `reversed` so number 1 is always the oldest. Bump every
+         existing number up by one when you add something newer. -->
+    <ol class="publications" reversed>
+      <li>
+        <strong>O. Peckham</strong>, J. Raines, E. Bulsink, M. Goudswaard, J. Gopsill, D. Barton, A. Nassehi, B. Hicks (2025).
+        &ldquo;Artificial Intelligence in Generative Design: A Structured Review of Trends and Opportunities in Techniques and Applications.&rdquo;
+        <span class="venue">Designs</span> &mdash;
+        <a href="https://doi.org/10.3390/designs9040079">doi:10.3390/designs9040079</a>
+        <div class="flags">Journal &middot; Editor's Choice</div>
+      </li>
+      <li>
+        *<strong>O. Peckham</strong>, C. W. Elverum, B. Hicks, M. Goudswaard, C. Snider, M. Steinert, S. W. Eikevåg (2024).
+        &ldquo;Investigating and Characterising the Systemic Variability When Using Generative Design for Additive Manufacturing.&rdquo;
+        <span class="venue">Applied Sciences</span> &mdash;
+        <a href="https://doi.org/10.3390/app14114750">doi:10.3390/app14114750</a>
+        <div class="flags">Journal</div>
+      </li>
+      <li>
+        +<strong>O. Peckham</strong>, B. Hicks, M. Goudswaard (2025).
+        &ldquo;Lightweighting Using Shells: An Exploration of Generatively Designed Hollow Structures.&rdquo;
+        <span class="venue">Proceedings of the Design Society</span> &mdash;
+        <a href="https://doi.org/10.1017/pds.2025.10241">doi:10.1017/pds.2025.10241</a>
+        <div class="flags">Conference</div>
+      </li>
+      <li>
+        *D. Obilande, <strong>O. Peckham</strong>, A. McClenaghan, J. Gopsill, P. Torlind (2024).
+        &ldquo;Stress Concentrations and Design for Additive Manufacturing: A Design Artefact Approach to Investigation.&rdquo;
+        <span class="venue">Proceedings of the Design Society</span> &mdash;
+        <a href="https://doi.org/10.1017/pds.2024.181">doi:10.1017/pds.2024.181</a>
+        <div class="flags">Conference</div>
+      </li>
+      <li>
+        +<strong>O. Peckham</strong>, B. Hicks, M. Goudswaard (2024).
+        &ldquo;Are Generative Design Tools Creative? A Characterisation of Tools Throughout the Design Process.&rdquo;
+        <span class="venue">Proceedings of the Design Society</span> &mdash;
+        <a href="https://doi.org/10.1017/pds.2024.71">doi:10.1017/pds.2024.71</a>
+        <div class="flags">Conference</div>
+      </li>
+      <li>
+        A. McClenaghan, J. Gopsill, <strong>O. Peckham</strong>, B. Hicks (2024).
+        &ldquo;Examining the Trade-Offs in Generating Designs for Manufacture.&rdquo;
+        <span class="venue">Procedia CIRP</span> &mdash;
+        <a href="https://doi.org/10.1016/j.procir.2024.07.061">doi:10.1016/j.procir.2024.07.061</a>
+        <div class="flags">Conference</div>
+      </li>
+      <li>
+        +<strong>O. Peckham</strong>, M. Goudswaard, C. Snider, J. Gopsill (2023).
+        &ldquo;What to Share? A Preliminary Investigation into the Impact of Information Sharing on Distributed Decentralised Agent-Based Additive Manufacturing Networks.&rdquo;
+        <span class="venue">Advances in Production Management Systems</span> &mdash;
+        <a href="https://doi.org/10.1007/978-3-031-43666-6_36">doi:10.1007/978-3-031-43666-6_36</a>
+        <div class="flags">Conference</div>
+      </li>
+    </ol>
+
+  </main>
+</div>
+{% endblock %}

@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block windowtitle %}{{ SITENAME }}{% endblock %}</title>
+<meta name="description" content="{% block description %}Owen Peckham — projects in generative design, topology optimisation and engineering{% endblock %}">
+<link href="{{ SITEURL }}/theme/site.css" rel="stylesheet">
+
+{% if FEED_ALL_ATOM %}
+<link href="{{ FEED_DOMAIN }}/{{ FEED_ALL_ATOM }}" type="application/atom+xml" rel="alternate" title="{{ SITENAME }} Atom Feed" />
+{% endif %}
+</head>
+<body>
+{% import "icons.html" as icons %}
+
+<header class="site-header">
+  <div class="wrap">
+    <div class="brand">
+      <div>
+        <h1><a href="{{ SITEURL }}/">{{ SITENAME }}</a></h1>
+        <p class="tagline">Projects in generative design, topology optimisation &amp; engineering</p>
+      </div>
+    </div>
+    <nav class="site-nav">
+      <a href="{{ SITEURL }}/"{% if NAVACTIVE == 'home' %} class="active"{% endif %}>Home</a>
+      <a href="{{ SITEURL }}/#projects"{% if NAVACTIVE == 'projects' %} class="active"{% endif %}>Projects</a>
+      <a href="{{ SITEURL }}/#publications"{% if NAVACTIVE == 'publications' %} class="active"{% endif %}>Publications</a>
+      <a href="{{ SITEURL }}/about.html"{% if NAVACTIVE == 'about' %} class="active"{% endif %}>About me</a>
+    </nav>
+  </div>
+</header>
+
+<div class="page-content">
+  <div class="wrap">
+    {% block body %}{% endblock %}
+  </div>
+</div>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <ul>
+      {% for link in FOOTER_LINKS %}
+      <li><a href="{{ link.url }}">{{ icons.footer(link.icon) }}{{ link.label }}</a></li>
+      {% endfor %}
+    </ul>
+    <p class="copyright">&copy; {{ AUTHOR }}</p>
+  </div>
+</footer>
+
+</body>
+</html>

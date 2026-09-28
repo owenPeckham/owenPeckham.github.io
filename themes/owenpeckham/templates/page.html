@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block windowtitle %}{{ page.title }} &middot; {{ SITENAME }}{% endblock %}
+{% if page.summary %}{% block description %}{{ page.summary|striptags }}{% endblock %}{% endif %}
+
+{% set NAVACTIVE = 'projects' if page.projectcard else (page.navactive if page.navactive else '') %}
+
+{% block body %}
+<div class="layout no-sidebar">
+  <main class="content">
+
+    {% if page.projectcard %}
+      <a class="back-link" href="{{ SITEURL }}/#projects">&larr; Back to projects</a>
+    {% else %}
+      <a class="back-link" href="{{ SITEURL }}/">&larr; Back home</a>
+    {% endif %}
+
+    <div class="page-header-block">
+      {% if page.metalabel %}<span class="meta">{{ page.metalabel }}</span>{% endif %}
+      <h1>{{ page.title }}</h1>
+    </div>
+
+    {% if page.image %}
+    <div class="page-hero">
+      <img src="{{ SITEURL }}/images/projects/{{ page.image }}" alt="Placeholder hero image for {{ page.title }} &mdash; replace with a real photo or diagram" loading="lazy">
+    </div>
+    {% endif %}
+
+    {% if page.tool_url or page.tool_url2 %}
+    <div class="page-tools">
+      {% if page.tool_url %}<a href="{{ page.tool_url }}">{{ page.tool_label }}</a>{% endif %}
+      {% if page.tool_url2 %}<a class="secondary" href="{{ page.tool_url2 }}">{{ page.tool_label2 }}</a>{% endif %}
+    </div>
+    {% endif %}
+
+    <div class="page-body">
+      {{ page.content }}
+    </div>
+
+    {% if page.projectcard %}
+    <h2>Gallery</h2>
+    <p class="placeholder-note">Placeholder &mdash; swap these for real photos, renders or diagrams</p>
+    <div class="gallery-placeholder">
+      {% for i in range(page.gallery_count|default(3)|int) %}
+      <div class="slot">Image {{ i + 1 }}</div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+  </main>
+</div>
+{% endblock %}
