@@ -20,9 +20,21 @@ AUTHOR_FEED_RSS = None
 # 'extra' holds the two standalone interactive tools (self-contained HTML,
 # not Pelican templates) -- copied through verbatim.
 # 'images' and 'cv' are plain static assets referenced from page content.
-ARTICLE_EXCLUDES = ['extra', 'images', 'cv']
+# 'demos' and 'examples' hold Python demonstrator projects (see
+# DEMONSTRATOR.md): copied verbatim, so their .py/.md files are never
+# treated as articles.
+ARTICLE_EXCLUDES = ['extra', 'images', 'cv', 'demos', 'examples']
 
-STATIC_PATHS = ['extra', 'images', 'cv']
+STATIC_PATHS = ['extra', 'images', 'cv', 'demos', 'examples']
+
+# Don't publish editor/OS litter or Python caches from demo folders.
+IGNORE_FILES = ['**/.*', '.*', '__pycache__', '*.pyc']
+
+# Python demonstrator: writes per-demo file indexes, the demo catalogue and
+# .nojekyll (needed on GitHub Pages for __init__.py files).
+PLUGIN_PATHS = ['plugins']
+PLUGINS = ['demonstrator']
+DEMONSTRATOR_ROOTS = ['demos', 'examples']
 EXTRA_PATH_METADATA = {
     'extra/gd_setup.html': {'path': 'gd_setup.html'},
     'extra/pcls_demonstrator.html': {'path': 'pcls_demonstrator.html'},

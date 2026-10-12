@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Demonstrator unit tests (browser)</title>
+<style>
+  body { font: 15px/1.5 system-ui, sans-serif; margin: 2rem; color: #1c1d21; background: #fff; }
+  h1 { font-size: 1.3rem; }
+  #summary { font-weight: 600; }
+  .pass { color: #13753a; }
+  .fail { color: #b3261e; }
+  li { margin: 0.15rem 0; }
+  pre { white-space: pre-wrap; background: #f5f5f7; padding: 0.5rem; }
+</style>
+</head>
+<body>
+<h1>Python demonstrator: browser unit tests</h1>
+<p>Sanitiser, explainer pipeline, manifest and path checks, run against the real
+DOMPurify and markdown-it in this browser. Served by
+<code>python tests/demonstrator/e2e_checklist.py --serve</code>.</p>
+<p id="summary">Running…</p>
+<ol id="results"></ol>
+<script type="module" src="unit.js"></script>
+</body>
+</html>

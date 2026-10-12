@@ -1,0 +1,31 @@
+{
+ "version": 1,
+ "main": "main.py",
+ "files": [
+  {
+   "path": "demo.json",
+   "size": 643,
+   "sha1": "8913dbcedd1d89c3"
+  },
+  {
+   "path": "explainer.md",
+   "size": 2994,
+   "sha1": "2dc22f0789a3f4b7"
+  },
+  {
+   "path": "main.py",
+   "size": 2750,
+   "sha1": "196f3af96e193941"
+  },
+  {
+   "path": "physics.py",
+   "size": 1170,
+   "sha1": "cd3df16abb342069"
+  },
+  {
+   "path": "figures/mass-spring.svg",
+   "size": 9264,
+   "sha1": "a6c3a4afe5958b70"
+  }
+ ]
+}

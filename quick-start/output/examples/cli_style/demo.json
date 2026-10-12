@@ -1,0 +1,9 @@
+{
+  "title": "Waveform generator (argparse)",
+  "description": "A command-line script whose argparse options become controls; changes rebuild sys.argv and re-run it.",
+  "main": "main.py",
+  "presets": {
+    "rough_square": {"label": "Rough square wave", "values": {"wave": "square", "harmonics": 3, "freq": 1.0}},
+    "smooth_saw": {"label": "Smooth sawtooth", "values": {"wave": "sawtooth", "harmonics": 25, "points": 600}}
+  }
+}

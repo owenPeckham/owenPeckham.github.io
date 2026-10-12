@@ -1,0 +1,40 @@
+{
+ "demos": [
+  {
+   "path": "examples/cli_style/",
+   "title": "Waveform generator (argparse)",
+   "description": "A command-line script whose argparse options become controls; changes rebuild sys.argv and re-run it.",
+   "page": "/examples/cli_style/"
+  },
+  {
+   "path": "examples/config_style/",
+   "title": "Particles in a box (dataclass config)",
+   "description": "A toy ideal gas configured by a dataclass and the keyword arguments of main().",
+   "page": "/examples/config_style/"
+  },
+  {
+   "path": "examples/heat_map/",
+   "title": "Heat diffusion on a plate",
+   "description": "An explicit finite-difference heat solver split across a small package, with sources read from a CSV file.",
+   "page": "/examples/heat_map/"
+  },
+  {
+   "path": "examples/oscillator/",
+   "title": "Damped, driven oscillator",
+   "description": "A mass on a spring with friction and a periodic push, integrated with RK4 and animated live.",
+   "page": "/examples/oscillator/"
+  },
+  {
+   "path": "examples/static_plot/",
+   "title": "Line shapes (static figure)",
+   "description": "A static figure with one dropdown: the demonstrator re-runs the script when it changes.",
+   "page": "/examples/static_plot/"
+  },
+  {
+   "path": "examples/with_hints/",
+   "title": "Oscillator with hints and overrides",
+   "description": "The same oscillator, tuned with inline # demo: hints and demo.json overrides.",
+   "page": "/examples/with_hints/"
+  }
+ ]
+}

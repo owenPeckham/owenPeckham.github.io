@@ -17,3 +17,6 @@ If pelican/Jinja2/Markdown aren't installed yet, run `pip install -r ../requirem
 `make github`
 
 `Ctrl + Shift + R` for a force refresh on the browser that bypasses the local cache.
+
+#### Python demonstrator
+Interactive Python demos that run in the browser (Pyodide): how to add one, options and tests are in [DEMONSTRATOR.md](DEMONSTRATOR.md).

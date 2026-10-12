@@ -1,0 +1,56 @@
+{
+ "version": 1,
+ "main": "main.py",
+ "files": [
+  {
+   "path": "demo.json",
+   "size": 411,
+   "sha1": "cb6d4fe05330bfe2"
+  },
+  {
+   "path": "explainer.md",
+   "size": 2013,
+   "sha1": "5414056cf129177f"
+  },
+  {
+   "path": "main.py",
+   "size": 1793,
+   "sha1": "ed33497d0bcebfcc"
+  },
+  {
+   "path": "data/sources.csv",
+   "size": 220,
+   "sha1": "50190953448fc1e7"
+  },
+  {
+   "path": "figures/stencil.svg",
+   "size": 9295,
+   "sha1": "bf4e5e4248ec658d"
+  },
+  {
+   "path": "heatsim/__init__.py",
+   "size": 199,
+   "sha1": "c14ca2c8d4dd1fb5"
+  },
+  {
+   "path": "heatsim/grid.py",
+   "size": 788,
+   "sha1": "626577a011e84220"
+  },
+  {
+   "path": "heatsim/solver.py",
+   "size": 777,
+   "sha1": "854ddd772d29e321"
+  },
+  {
+   "path": "heatsim/sources/__init__.py",
+   "size": 101,
+   "sha1": "deb4e646c7e8f2b1"
+  },
+  {
+   "path": "heatsim/sources/loader.py",
+   "size": 705,
+   "sha1": "2d5a1302d9deed3b"
+  }
+ ]
+}

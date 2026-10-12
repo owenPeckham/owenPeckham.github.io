@@ -1,0 +1,2 @@
+The E2E test server serves no demo.index.json for this folder, so the
+page has to find helpers.py by scanning the imports in main.py.

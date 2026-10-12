@@ -1,0 +1,9 @@
+{
+  "title": "Particles in a box (dataclass config)",
+  "description": "A toy ideal gas configured by a dataclass and the keyword arguments of main().",
+  "main": "main.py",
+  "presets": {
+    "falling_gas": {"label": "Gas under gravity", "values": {"GasConfig.gravity": 2.0, "GasConfig.temperature": 0.5}},
+    "crowded": {"label": "Crowded box", "values": {"GasConfig.n_particles": 400, "GasConfig.box_size": 6.0}}
+  }
+}

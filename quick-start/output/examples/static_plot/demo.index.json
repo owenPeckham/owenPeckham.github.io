@@ -1,0 +1,26 @@
+{
+ "version": 1,
+ "main": "main.py",
+ "files": [
+  {
+   "path": "demo.json",
+   "size": 326,
+   "sha1": "105f21c2be446892"
+  },
+  {
+   "path": "explainer.md",
+   "size": 1275,
+   "sha1": "82d9539581a0f1c7"
+  },
+  {
+   "path": "main.py",
+   "size": 748,
+   "sha1": "a8250bd84183aaa0"
+  },
+  {
+   "path": "figures/fwhm.svg",
+   "size": 8773,
+   "sha1": "b2f28098f7a78c1d"
+  }
+ ]
+}

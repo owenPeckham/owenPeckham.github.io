@@ -1,0 +1,5 @@
+{
+  "title": "Editable project (test fixture)",
+  "editable": true,
+  "files": ["model.py"]
+}

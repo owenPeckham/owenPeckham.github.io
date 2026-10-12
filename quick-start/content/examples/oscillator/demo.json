@@ -1,0 +1,12 @@
+{
+  "title": "Damped, driven oscillator",
+  "description": "A mass on a spring with friction and a periodic push, integrated with RK4 and animated live.",
+  "main": "main.py",
+  "files": ["physics.py"],
+  "presets": {
+    "undamped": {"label": "No damping", "values": {"DAMPING": 0.0, "DRIVE": 0.0}},
+    "critical": {"label": "Critically damped", "values": {"DAMPING": 1.0, "DRIVE": 0.0}},
+    "resonance": {"label": "Resonance", "description": "Drive at the natural frequency with light damping.", "values": {"DAMPING": 0.05, "DRIVE": 0.3, "DRIVE_FREQ": 1.0, "FREQ": 1.0}}
+  },
+  "back": {"label": "Back to projects", "url": "/#projects"}
+}

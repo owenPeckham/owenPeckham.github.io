@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{#- Python demonstrator page (see DEMONSTRATOR.md at the repository root).
+
+    Used by Markdown pages with "Template: demonstrator".  Page metadata
+    (all optional; query parameters override them):
+      Demo:        /demos/my_demo/      folder with main.py and demo.json
+      Script:      /path/to/main.py     ...or a bare script (with Files:)
+      Files:       helper.py,data/x.csv
+      Explainer:   explainer.md          (default: explainer.md, then README.md)
+      Panes:       explainer,sim,code
+      Layout:      auto | split | columns | stacked | tabs
+      Back_url / Back_label             destination of the back link
+      Metalabel:   small caption above the title
+      Navactive:   which top-nav item to highlight (default: projects)
+    The page body (Markdown) is shown as an introduction above the demo.
+-#}
+{% set NAVACTIVE = page.navactive if page and page.navactive else 'projects' %}
+{% set PYD_VERSION = DEMONSTRATOR_VERSION|default('dev') %}
+{% set PYD_DESC = (page.summary|striptags|trim) if page and page.summary else 'An interactive Python demonstration that runs in your browser.' %}
+
+{% block windowtitle %}{{ page.title }} &middot; {{ SITENAME }}{% endblock %}
+{% block description %}{{ PYD_DESC|e }}{% endblock %}
+
+{% block head %}
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="{{ SITENAME|e }}">
+<meta property="og:title" content="{{ page.title|striptags|e }}">
+<meta property="og:description" content="{{ PYD_DESC|e }}">
+<meta name="twitter:card" content="summary">
+<link rel="stylesheet" href="{{ SITEURL }}/theme/demonstrator/css/demonstrator.css?v={{ PYD_VERSION }}">
+<script>
+  /* Embed mode and explicit themes apply before the first paint. */
+  (function () {
+    try {
+      var q = new URLSearchParams(location.search), t = q.get("theme");
+      if (/^(1|true|yes)$/i.test(q.get("embed") || "")) document.documentElement.classList.add("pyd-embed");
+      if (t === "dark" || t === "light") document.documentElement.setAttribute("data-theme", t);
+    } catch (e) {}
+  })();
+</script>
+<script type="module" src="{{ SITEURL }}/theme/demonstrator/js/page.js?v={{ PYD_VERSION }}"></script>
+{% endblock %}
+
+{% block body %}
+<div class="pyd-page" id="pyd-root"
+     data-demo="{{ (page.demo or '')|trim|e }}"
+     data-script="{{ (page.script or '')|trim|e }}"
+     data-files="{{ (page.files or '')|trim|e }}"
+     data-explainer="{{ (page.explainer or '')|trim|e }}"
+     data-panes="{{ (page.panes or '')|trim|e }}"
+     data-layout="{{ (page.layout or '')|trim|e }}"
+     data-back-url="{{ (page.back_url or '')|trim|e }}"
+     data-back-label="{{ (page.back_label or '')|trim|e }}"
+     data-site-root="{{ SITEURL }}/"
+     data-site-name="{{ SITENAME|e }}"
+     data-version="{{ PYD_VERSION }}"
+     {% if page.demo or page.script %}data-title="{{ page.title|striptags|e }}"{% endif %}>
+
+  <div class="pyd-pagehead">
+    <a class="back-link" data-pyd-back href="{{ (page.back_url or (SITEURL ~ '/#projects'))|e }}"><span aria-hidden="true">&larr;</span> <span data-pyd-back-label>{{ (page.back_label or 'Back to projects')|e }}</span></a>
+    <div class="page-header-block">
+      <span class="meta">{{ (page.metalabel or 'Interactive demo')|e }}</span>
+      <h1 data-pyd-title>{{ page.title }}</h1>
+    </div>
+    {% if page.content and page.content|striptags|trim %}
+    <div class="page-body pyd-intro">{{ page.content }}</div>
+    {% else %}
+    <p class="pyd-summary" data-pyd-summary>{{ PYD_DESC|e if page.summary else '' }}</p>
+    {% endif %}
+  </div>
+
+  <div class="pyd-mount" data-pyd-mount>
+    <noscript><p class="pyd-boot">This interactive demo needs JavaScript. The code is still available in the project folder.</p></noscript>
+  </div>
+</div>
+{% endblock %}

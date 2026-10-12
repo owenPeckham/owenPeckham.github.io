@@ -1,0 +1,26 @@
+{
+ "version": 1,
+ "main": "main.py",
+ "files": [
+  {
+   "path": "demo.json",
+   "size": 423,
+   "sha1": "c926b950c4f33d58"
+  },
+  {
+   "path": "explainer.md",
+   "size": 1866,
+   "sha1": "e43de78991f1ab79"
+  },
+  {
+   "path": "main.py",
+   "size": 3092,
+   "sha1": "a235f518393bff48"
+  },
+  {
+   "path": "figures/box.svg",
+   "size": 8951,
+   "sha1": "f844ea9d05ee8a21"
+  }
+ ]
+}

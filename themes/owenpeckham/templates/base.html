@@ -11,6 +11,12 @@
 {% if FEED_ALL_ATOM %}
 <link href="{{ FEED_DOMAIN }}/{{ FEED_ALL_ATOM }}" type="application/atom+xml" rel="alternate" title="{{ SITENAME }} Atom Feed" />
 {% endif %}
+{% block head %}{% endblock %}
+{#- Pages that embed Python demos (<py-demo ...> in their Markdown) get the
+    small embedding helper; see DEMONSTRATOR.md. -#}
+{% if (page is defined and page and '<py-demo' in page.content) or (article is defined and article and '<py-demo' in article.content) %}
+<script type="module" src="{{ SITEURL }}/theme/demonstrator/js/embed.js?v={{ DEMONSTRATOR_VERSION|default('dev') }}"></script>
+{% endif %}
 </head>
 <body>
 {% import "icons.html" as icons %}

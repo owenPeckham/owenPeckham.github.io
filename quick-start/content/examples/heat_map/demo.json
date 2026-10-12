@@ -1,0 +1,9 @@
+{
+  "title": "Heat diffusion on a plate",
+  "description": "An explicit finite-difference heat solver split across a small package, with sources read from a CSV file.",
+  "main": "main.py",
+  "files": ["heatsim/**/*.py", "data/*.csv"],
+  "presets": {
+    "fine_grid": {"label": "Fine grid", "description": "Four times as many cells, more steps per frame.", "values": {"GRID": 128, "STEPS_PER_FRAME": 12}}
+  }
+}

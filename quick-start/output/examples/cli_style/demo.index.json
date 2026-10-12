@@ -1,0 +1,26 @@
+{
+ "version": 1,
+ "main": "main.py",
+ "files": [
+  {
+   "path": "demo.json",
+   "size": 432,
+   "sha1": "28a494cce80e5e9b"
+  },
+  {
+   "path": "explainer.md",
+   "size": 1606,
+   "sha1": "32816007f2a523c8"
+  },
+  {
+   "path": "main.py",
+   "size": 2421,
+   "sha1": "fc7ca5903ecde5c3"
+  },
+  {
+   "path": "figures/harmonics.svg",
+   "size": 8938,
+   "sha1": "4a16a5bdf0d480b0"
+  }
+ ]
+}

@@ -1,0 +1,9 @@
+{
+  "title": "Line shapes (static figure)",
+  "description": "A static figure with one dropdown: the demonstrator re-runs the script when it changes.",
+  "main": "main.py",
+  "panes": ["explainer", "sim", "code"],
+  "presets": {
+    "spectroscopy": {"label": "Spectroscopy favourite", "values": {"SHAPE": "lorentzian"}}
+  }
+}

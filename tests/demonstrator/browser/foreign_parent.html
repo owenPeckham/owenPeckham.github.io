@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Foreign parent (cross-origin embedding test)</title>
+</head>
+<body>
+<p>This page is served from a different origin than the demo it embeds. The
+demo must ignore its theme messages and must not post messages to it.</p>
+<script>
+  // ?target=<origin of the site under test>
+  const target = new URLSearchParams(location.search).get("target");
+  const state = { loaded: false, received: [] };
+  window.__pydForeign = state;
+  window.addEventListener("message", (e) => {
+    if (e.data && typeof e.data === "object" && String(e.data.type || "").startsWith("pyd:")) state.received.push(e.data.type);
+  });
+  const f = document.createElement("iframe");
+  f.style.cssText = "width:900px;height:600px;border:1px solid #999";
+  f.src = target + "/demonstrator.html?demo=/examples/static_plot/&embed=1&panes=sim&load=click";
+  f.addEventListener("load", () => { state.loaded = true; });
+  document.body.appendChild(f);
+  state.sendTheme = (t) => f.contentWindow.postMessage({ type: "pyd:theme", theme: t }, "*");
+</script>
+</body>
+</html>

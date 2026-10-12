@@ -1,0 +1,18 @@
+{
+  "title": "Oscillator with hints and overrides",
+  "description": "The same oscillator, tuned with inline # demo: hints and demo.json overrides.",
+  "main": "main.py",
+  "files": ["physics.py"],
+  "parameter_overrides": {
+    "DRIVE_FREQ": {"mode": "restart", "help": "Restarts so the drive always starts in phase."},
+    "WINDOW": {"hide": false, "label": "History window", "min": 2, "max": 20, "step": 0.5, "unit": "s"},
+    "physics.py:NONLINEARITY": {"label": "Duffing stiffness", "min": -0.5, "max": 2, "step": 0.05, "group": "Physics"}
+  },
+  "buttons": [
+    {"label": "Kick the mass", "call": "kick", "help": "Adds a sudden push to the velocity."},
+    {"label": "Missing function", "call": "does_not_exist"}
+  ],
+  "presets": {
+    "resonance": {"label": "Resonance", "values": {"DAMPING": 0.05, "DRIVE": 0.3, "DRIVE_FREQ": 1.0}}
+  }
+}
