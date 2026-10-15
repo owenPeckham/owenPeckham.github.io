@@ -344,12 +344,17 @@
             </div>
 
             <!-- LINEAR BUCKLING CONSTRAINT -->
-            <h2 class="pcls-only">Linear Buckling Constraint</h2>
-            <div class="control-group pcls-only">
+            <h2>Linear Buckling Constraint</h2>
+            <div class="control-group">
                 <label style="display:flex; align-items:center; gap:6px;">
                     <input type="checkbox" id="bucklingEnabled">
                     Enable buckling constraint
-                    <span class="info-icon" data-tooltip="Adds a minimum buckling safety factor as a third constraint (G3) alongside volume and the piecewise-constant term. The optimiser will steer the topology away from slender compression members that would buckle before reaching material strength.">[?]</span>
+                    <span class="info-icon" data-tooltip="Adds a minimum buckling safety factor as a third constraint (G3) alongside volume and the piecewise-constant term. The optimiser will steer the topology away from slender compression members that would buckle before reaching material strength. SIMP and the classical level set take the same constraint: SIMP through the filtered density sensitivity, the level set as a boundary speed only, with no buckling topological derivative (docs/theory.md section 12.6).">[?]</span>
+                </label>
+                <label style="display:flex; align-items:center; gap:6px; margin-top:6px;">
+                    <input type="checkbox" id="buck_report_exported">
+                    Report exported buckling load when disabled
+                    <span class="info-icon" data-tooltip="Run one buckling analysis of the exported design even though the constraint is disabled, and report the critical load factor. Use it on the unconstrained twin of a buckling study so the two runs can be compared. Has no effect when the constraint is enabled (the exported design is then always analysed).">[?]</span>
                 </label>
                 <div id="bucklingUnsupportedWarn" style="display:none; font-size:0.75rem; color:#e8a33d; margin-top:6px;">
                     ⚠ The selected analysis type does not support linear buckling.
@@ -382,14 +387,23 @@
                     <div><label>Min Geo. Stiff. Rho <span class="info-icon" data-tooltip="Density below which the geometric stiffness contribution is smoothly ramped to zero, guarding against spurious void-region buckling modes.">[?]</span></label><input type="number" id="buck_minrho" value="0.1" step="0.05" min="0" max="1" data-req="true" data-buckling="true"></div>
                 </div>
 
-                <h3 style="font-size:0.85rem; color:var(--text-muted); margin:12px 0 5px 0;">Constraint Multiplier (G3)</h3>
-                <div class="param-grid">
+                <h3 class="buckling-no-simp" style="font-size:0.85rem; color:var(--text-muted); margin:12px 0 5px 0;">Constraint Multiplier (G3)</h3>
+                <div class="param-grid buckling-no-simp">
                     <div><label>Lambda3 Initial <span class="info-icon" data-tooltip="Initial Lagrange multiplier for the buckling constraint.">[?]</span></label><input type="number" id="buck_l3" value="0.0" step="0.1" min="0" data-req="true" data-buckling="true"></div>
                     <div><label>Lambda3 Clamp Max <span class="info-icon" data-tooltip="Anti-windup ceiling applied to both lambda3 and the modified multiplier that scales the buckling term in the update. This is the practical guard against the buckling constraint overwhelming the compliance and volume drivers. Reduce it if the volume fraction runs away after activation.">[?]</span></label><input type="number" id="buck_l3max" value="3.0" step="0.5" min="0" data-req="true" data-buckling="true"></div>
                     <div><label>Mu3 Initial <span class="info-icon" data-tooltip="Initial penalty parameter. The penalty weight is 1/mu3, so a smaller value means a harder constraint.">[?]</span></label><input type="number" id="buck_mu3" value="0.1" step="0.01" min="1e-6" data-req="true" data-buckling="true"></div>
-                    <div><label>Mu3 Decay Fac. <span class="info-icon" data-tooltip="Decay factor for mu3, applied after an outer iteration only while the buckling constraint is violated and its violation shrank by less than 25 % (the adaptive rule mu1 already follows). mu3 no longer decays while the constraint is satisfied.">[?]</span></label><input type="number" id="buck_mu3_decay" value="0.9" step="0.05" min="0" max="1" data-req="true" data-buckling="true"></div>
+                    <div><label>Mu3 Decay Fac. <span class="info-icon" data-tooltip="Decay factor for mu3 (PCLS; the level set holds mu3 fixed unless 'Buckling Fixed Penalties' is off), applied after an outer iteration only while the buckling constraint is violated and its violation shrank by less than 25 % (the adaptive rule mu1 already follows). mu3 no longer decays while the constraint is satisfied.">[?]</span></label><input type="number" id="buck_mu3_decay" value="0.9" step="0.05" min="0" max="1" data-req="true" data-buckling="true"></div>
                     <div><label>Mu3 Floor <span class="info-icon" data-tooltip="Lower bound on mu3, preventing the penalty from growing without limit. The old default (1e-4) let the modified multiplier jump between 0 and its cap on the sign of a tiny G3 (bang-bang); 0.01 keeps it continuous.">[?]</span></label><input type="number" id="buck_mu3_floor" value="0.01" data-req="true" data-buckling="true"></div>
                     <div><label>Term Clamp <span class="info-icon" data-tooltip="Symmetric per-voxel clamp on the normalised buckling update term, mirroring the stiffness term's clamp.">[?]</span></label><input type="number" id="buck_term_clamp" value="10.0" step="1" min="0" data-req="true" data-buckling="true"></div>
+                </div>
+
+                <h3 style="font-size:0.85rem; color:var(--text-muted); margin:12px 0 5px 0;">Run Cost</h3>
+                <div class="param-grid">
+                    <div><label>Eigensolver Tol. <span class="info-icon" data-tooltip="Relative convergence tolerance of the ARPACK buckling eigensolve. 1e-12 (default) is about 21 % cheaper than machine precision (0) in back-substitutions. 1e-9 is about 39 % cheaper (22 % fewer than 1e-12) and showed no corrupted aggregate or sensitivity in about 300 test evaluations, but looser tolerances can miss a mode and 1e-6 did corrupt the sensitivity once in validation, so 1e-9 is an opt-in, not proven safe (theory.md section 6.10). Set 0 for machine precision (used by the finite-difference validation).">[?]</span></label><input type="number" id="buck_eig_tol" value="1e-12" step="any" min="0" data-req="true" data-buckling="true"></div>
+                    <div><label>Idle Evaluate Every <span class="info-icon" data-tooltip="While the constraint is idle (multiplier lambda3 and its modified value both zero, and the last critical load factor at least Idle Margin x the full safety factor), the eigensolve runs only every N inner iterations. Set to the same value as Evaluate Every, or lower, to disable the idle cadence.">[?]</span></label><input type="number" id="buck_idle_every" value="10" step="1" min="1" data-req="true" data-buckling="true"></div>
+                    <div><label>Idle Margin <span class="info-icon" data-tooltip="Headroom that defines 'idle': the last critical load factor must be at least this multiple of the full safety factor. Must be at least 1.">[?]</span></label><input type="number" id="buck_idle_margin" value="1.1" step="0.05" min="1" data-req="true" data-buckling="true"></div>
+                    <div><label>Idle Switch Tol. <span class="info-icon" data-tooltip="Idle cadence is interrupted and the eigensolve runs at once if the number of voxels that switched phase since the last evaluation exceeds this fraction of the design voxels.">[?]</span></label><input type="number" id="buck_idle_switch" value="1e-4" step="any" min="0" data-req="true" data-buckling="true"></div>
+                    <div><label>Settle Needs Full Ramp <span class="info-icon" data-tooltip="Off (default): the buckling settle test is judged against the safety factor currently enforced, so a design that satisfies the ramp can settle even before the ramp ends. On: the run cannot be declared converged until the safety factor has reached its full target.">[?]</span></label><input type="checkbox" id="buck_settle_full" data-buckling="true"></div>
                 </div>
             </div>
 
@@ -419,10 +433,10 @@
 
             <h2>Optimiser Method</h2>
             <div class="control-group">
-                <label>Method <span class="info-icon" data-tooltip="Which optimiser runs this problem file (optimiser.method). PCLS is the default, and a file without the key is a PCLS file. SIMP (density filter, optimality criteria) and the classical level set (signed distance, Hamilton-Jacobi transport) are comparison baselines that solve the same compliance and volume problem on the same density backends; they need analysis type Regular or Conjugate Gradient and do not support the buckling constraint. Switching hides the PCLS-only fields (their values are kept) and shows the method's own. See docs/theory.md section 12, docs/simp_readme.md and docs/levelset_readme.md.">[?]</span></label>
+                <label>Method <span class="info-icon" data-tooltip="Which optimiser runs this problem file (optimiser.method). PCLS is the default, and a file without the key is a PCLS file. SIMP (density filter, MMA update) and the classical level set (signed distance, Hamilton-Jacobi transport) are comparison baselines that solve the same compliance and volume problem on the same density backends; they need analysis type Regular or Conjugate Gradient. Both take the buckling constraint (SIMP through its MMA update; the level set by boundary motion only, with no buckling topological derivative). Switching hides the PCLS-only fields (their values are kept) and shows the method's own. See docs/theory.md section 12, docs/simp_readme.md and docs/levelset_readme.md.">[?]</span></label>
                 <select id="optMethod">
                     <option value="pcls" selected>PCLS (Piecewise Constant Level Set)</option>
-                    <option value="simp">SIMP (density filter, OC)</option>
+                    <option value="simp">SIMP (density filter, MMA)</option>
                     <option value="levelset">Classical Level Set</option>
                 </select>
                 <div id="methodBackendWarn" style="display:none; font-size:0.75rem; color:#e8a33d; margin-top:6px;">
@@ -436,16 +450,18 @@
                     <div><label>Penalty Start <span class="info-icon" data-tooltip="Start value of a linear continuation of p over 'Penalty Ramp Iters' iterations. Blank (default) = p, no continuation. [1, p].">[?]</span></label><input type="number" id="simp_penalty_start" value="" min="1" max="5" placeholder="= p"></div>
                     <div><label>Penalty Ramp Iters <span class="info-icon" data-tooltip="Iterations over which p rises linearly from 'Penalty Start' to p. 0 = no continuation. Integer >= 0.">[?]</span></label><input type="number" id="simp_penalty_ramp_iterations" value="0" min="0" step="1" data-req="true"></div>
                     <div><label>Filter Radius <span class="info-icon" data-tooltip="Radius r_min of the linear cone (density) filter, in voxels. The filter removes checkerboards and sets the smallest member to about 2 r_min voxels. 1 = no filter. [1, 10].">[?]</span></label><input type="number" id="simp_filter_radius" value="1.5" min="1" max="10" step="0.1" data-req="true"></div>
-                    <div><label>Move Limit <span class="info-icon" data-tooltip="Largest change of a design variable in one optimality-criteria update. (0, 1].">[?]</span></label><input type="number" id="simp_move_limit" value="0.2" min="0" max="1" step="0.05" data-req="true"></div>
-                    <div><label>OC Damping <span class="info-icon" data-tooltip="Damping exponent eta of the optimality-criteria update x <- x B^eta. (0, 1].">[?]</span></label><input type="number" id="simp_oc_damping" value="0.5" min="0" max="1" step="0.05" data-req="true"></div>
+                    <div><label>Move Limit <span class="info-icon" data-tooltip="Largest change of a design variable in one MMA update. (0, 1].">[?]</span></label><input type="number" id="simp_move_limit" value="0.2" min="0" max="1" step="0.05" data-req="true"></div>
                     <div><label>Initial Density <span class="info-icon" data-tooltip="Uniform initial value of the design variable in the design voxels. Blank (default) = the target volume. (0, 1].">[?]</span></label><input type="number" id="simp_initial_density" value="" min="0" max="1" placeholder="= target vol."></div>
                     <div><label>Change Tol. <span class="info-icon" data-tooltip="SIMP's stopping rule: the run converges when the largest change of a design variable in one iteration is below this, after 'Min Iters' iterations, with the continuation finished and the volume met (and the exported design connected and of the right volume). > 0.">[?]</span></label><input type="number" id="simp_change_tolerance" value="0.01" min="0" data-req="true"></div>
                     <div><label>Min Iters <span class="info-icon" data-tooltip="Iterations before the stopping rule may apply. Integer >= 0.">[?]</span></label><input type="number" id="simp_min_iterations" value="20" min="0" step="1" data-req="true"></div>
-                    <div><label>Projection Beta <span class="info-icon" data-tooltip="Sharpness of the Heaviside projection of the filtered density (Wang, Lazarov &amp; Sigmund 2011). 0 (default) = no projection. >= 0.">[?]</span></label><input type="number" id="simp_projection_beta" value="0.0" min="0" data-req="true"></div>
+                    <div><label>Projection Beta <span class="info-icon" data-tooltip="Sharpness of the Heaviside projection of the filtered density (Wang, Lazarov &amp; Sigmund 2011). 0 (default) = no projection (standard SIMP). Projection is an optional extension that pushes the physical density towards 0 and 1, so it reduces grey material beyond what plain SIMP does; leave it at 0 for a comparison with standard SIMP. >= 0.">[?]</span></label><input type="number" id="simp_projection_beta" value="0.0" min="0" data-req="true"></div>
                     <div><label>Projection Eta <span class="info-icon" data-tooltip="Threshold of the Heaviside projection. (0, 1).">[?]</span></label><input type="number" id="simp_projection_eta" value="0.5" min="0" max="1" step="0.05" data-req="true"></div>
                     <div><label>Projection Beta Max <span class="info-icon" data-tooltip="Largest beta of the projection continuation: beta doubles every 'Projection Every' iterations up to this. Blank (default) = beta, constant. >= Projection Beta.">[?]</span></label><input type="number" id="simp_projection_beta_max" value="" min="0" placeholder="= beta"></div>
                     <div><label>Projection Every <span class="info-icon" data-tooltip="Iterations between doublings of the projection beta. Integer >= 1.">[?]</span></label><input type="number" id="simp_projection_every" value="50" min="1" step="1" data-req="true"></div>
-                    <div><label>Profile <span class="info-icon" data-tooltip="'Demonstrator twin' measures the volume on the mean filtered density, as the browser demonstrator's SIMP twin does, instead of on the design density c1 + (1 - c1) x that PCLS and the level set use (they differ by at most c1). Needs Projection Beta = 0 and no continuation.">[?]</span></label><select id="simp_profile"><option value="" selected>Standard</option><option value="demonstrator">Demonstrator twin</option></select></div>
+                    <div><label>MMA Asymptote Init <span class="info-icon" data-tooltip="MMA: initial distance of the moving asymptotes from the design variable, as a fraction of its range. (0, 1).">[?]</span></label><input type="number" id="simp_mma_asymptote_init" value="0.5" min="0" max="1" step="0.05" data-req="true"></div>
+                    <div><label>MMA Asymptote Increase <span class="info-icon" data-tooltip="MMA: factor by which the asymptote distance grows for a variable that keeps moving the same way. > 1.">[?]</span></label><input type="number" id="simp_mma_asymptote_increase" value="1.2" min="1" step="0.05" data-req="true"></div>
+                    <div><label>MMA Asymptote Decrease <span class="info-icon" data-tooltip="MMA: factor by which the asymptote distance shrinks for a variable that oscillates. (0, 1).">[?]</span></label><input type="number" id="simp_mma_asymptote_decrease" value="0.7" min="0" max="1" step="0.05" data-req="true"></div>
+                    <div><label>MMA Constraint Penalty <span class="info-icon" data-tooltip="MMA: cost c of each constraint's elastic variable. A constraint multiplier (lambda3 in the output) that sits at this value means the constraint cannot be met. > 0.">[?]</span></label><input type="number" id="simp_mma_constraint_penalty" value="1000" min="0" step="100" data-req="true"></div>
                 </div>
             </div>
 
@@ -469,6 +485,9 @@
                     <div><label>Topo. Fraction <span class="info-icon" data-tooltip="Largest share of the solid design volume removed by one insertion. (0, 1].">[?]</span></label><input type="number" id="levelset_topological_fraction" value="0.02" min="0" max="1" data-req="true"></div>
                     <div><label>Topo. Hole Radius <span class="info-icon" data-tooltip="Radius of an inserted hole, in voxels; a hole is placed only where it lies entirely inside the solid. > 0.">[?]</span></label><input type="number" id="levelset_topological_hole_radius" value="1.6" min="0" data-req="true"></div>
                     <div><label>Topo. Until <span class="info-icon" data-tooltip="No hole is inserted from this iteration on. Blank (default) = no limit. Integer >= 0.">[?]</span></label><input type="number" id="levelset_topological_until" value="" min="0" step="1" placeholder="no limit"></div>
+                    <div><label>Buckling Normaliser <span class="info-icon" data-tooltip="Level set with the buckling constraint: the buckling speed is the density sensitivity divided by its mean magnitude, taken over the voxels next to the front (default) or over the domain voxels within half a voxel of it. Used only with buckling enabled (docs/theory.md eq. 12.43).">[?]</span></label><select id="levelset_buckling_normalisation"><option value="band" selected>Front band (default)</option><option value="domain">Domain</option></select></div>
+                    <div><label>Buckling Speed Sampling <span class="info-icon" data-tooltip="Level set with the buckling constraint: how the buckling speed is read at the front, interpolated along the grid line like the compliance speed (default; a test found it removes more of the aggregate per unit of material moved) or taken at the solid-side voxel. Boundary motion only: there is no buckling topological derivative, so the level set cannot create holes for buckling (docs/theory.md section 12.6).">[?]</span></label><select id="levelset_buckling_speed_sampling"><option value="interpolate" selected>Interpolate (default)</option><option value="solid_side">Solid side</option></select></div>
+                    <div><label>Buckling Fixed Penalties <span class="info-icon" data-tooltip="Level set with the buckling constraint: hold the penalties mu1 (volume) and mu3 (buckling) at their initial values instead of letting them decay to their floors. The decay makes the multiplier prediction act as a relay of gain 1/mu and made the load factor swing; held, the run settles smoothly. Off = the decay rule (the Mu3 Decay Fac. and Floor fields and the LS Mu1 Floor then apply). Has no effect without the buckling constraint.">[?]</span></label><input type="checkbox" id="levelset_buckling_fixed_penalties" checked></div>
                 </div>
             </div>
 
@@ -508,8 +527,9 @@
                 <div><label>Switch Tol. <span class="info-icon" data-tooltip="Maximum fraction of design voxels allowed to change phase (cross the level set) per iteration.">[?]</span></label><input type="number" id="conv_switch" value="1e-4" data-req="true"></div>
                 <div><label>Require Connected <span class="info-icon" data-tooltip="Also require the exported geometry to be connected: every loaded voxel joined to a support through solid with no void gap (voxels touching at a face, edge or corner count as joined), and at most 'Detached Tol.' of the solid volume outside such load paths. With the penalised interpolation designs are expected to be connected by the time they settle; this is the safety net.">[?]</span></label><input type="checkbox" id="conv_connected" checked></div>
                 <div><label>Detached Tol. <span class="info-icon" data-tooltip="Maximum fraction of the solid volume allowed in components that do not join a load to a support (floating members, dangling stubs).">[?]</span></label><input type="number" id="conv_detached" value="0.005" data-req="true"></div>
-                <div class="pcls-only"><label>Reconnect Resets <span class="info-icon" data-tooltip="If the design settles while disconnected, or settles connected but exports a volume outside 'Exported Vol. Tol.' of the target, the piecewise multiplier field lambda2 is cleared so the design can reconnect or release its void film, at most this many times in total (0 disables). Once the resets are spent a settled, connected design that only fails the volume check is accepted as converged, with a warning.">[?]</span></label><input type="number" id="reconn_resets" value="3" min="0" data-req="true"></div>
+                <div class="pcls-only"><label>Reconnect Resets <span class="info-icon" data-tooltip="If the design settles while disconnected, or settles connected but exports a volume outside 'Exported Vol. Tol.' of the target, the piecewise multiplier field lambda2 is cleared so the design can reconnect or release its void film, at most this many times in total (0 disables). The same budget serves the volume release of 'Freeze Release'. Once the resets are spent a settled, connected design that only fails the volume check is accepted as converged, with a warning.">[?]</span></label><input type="number" id="reconn_resets" value="3" min="0" data-req="true"></div>
                 <div><label>Exported Vol. Tol. <span class="info-icon" data-tooltip="Also require the volume of the EXPORTED geometry (phi at or above the level set, plus preserve regions) to lie within this fraction of the target volume: the difference |V_exported - V0| must be at most tol x V0. A uniform void film can satisfy the volume constraint on the density field without being exported, so a design can settle while exporting well under V0. A failing design is released by a lambda2 reset (shares 'Reconnect Resets'). 0 or less disables the test. Default 0.15. See theory.md section 5.5.1.">[?]</span></label><input type="number" id="conv_exported" value="0.15" step="any" data-req="true"></div>
+                <div class="pcls-only"><label>Freeze Release <span class="info-icon" data-tooltip="Two releases for a design that has stopped moving. (1) FROZEN (every settled test except the volume error and the buckling target has held for 'Settle Window' iterations, no grey included) with the exported volume off target by more than 'Exported Vol. Tol.': the piecewise multiplier lambda2 is cleared at once (shares 'Reconnect Resets') instead of after the design has settled. (2) STALLED (the same without the grey test, since a design held under its buckling target keeps a fringe of grey voxels) while the buckling constraint is in force and Lambda_crit < SF/(1+outer tolerance): the inner loop ends early so the multipliers are updated, instead of waiting for the whole inner budget between updates of lambda3. It does not clear lambda2 and uses no reset budget. A design below its buckling safety factor is never accepted as converged. Unchecked restores the earlier behaviour (volume check only after the design has settled, no early outer step). See theory.md section 5.5.2.">[?]</span></label><input type="checkbox" id="freeze_reset" checked></div>
             </div>
 
             <h2 class="pcls-only">Penalised Stiffness (Continuation)</h2>
@@ -628,7 +648,7 @@
 
             <h3>7. Linear Buckling Constraint</h3>
             <ul>
-                <li><strong>What it does:</strong> enabling this on the <em>Analysis</em> tab adds a minimum buckling safety factor as a third constraint. Compliance-based optimisation happily produces long thin struts because they are stiff per unit mass; those struts can buckle at a fraction of their design load. This constraint steers the topology away from them.</li>
+                <li><strong>What it does:</strong> enabling this on the <em>Analysis</em> tab adds a minimum buckling safety factor as a third constraint. Compliance-based optimisation happily produces long thin struts because they are stiff per unit mass; those struts can buckle at a fraction of their design load. This constraint steers the topology away from them. SIMP and the classical level set take it too; the level set can only move its boundary, so it cannot make holes for buckling.</li>
                 <li><strong>Safety factor:</strong> the design requirement. A value of 2.5 means the structure must not buckle below 2.5&times; the applied load.</li>
                 <li><strong>Ramping:</strong> set <em>Initial SF</em> below the target. Applying the full target the instant the constraint activates fights the volume constraint hard and can stall the topology before it has formed.</li>
                 <li><strong>Mode count:</strong> use an <strong>even</strong> number. Buckling modes of symmetric structures come in degenerate pairs, and a mode set ending part-way through a pair has an ill-defined sensitivity.</li>
@@ -2209,7 +2229,7 @@
             if (!capable) cb.checked = false;
             document.getElementById('bucklingUnsupportedWarn').style.display = capable ? 'none' : 'block';
             document.getElementById('panel_buckling').style.display =
-                (capable && cb.checked && document.getElementById('optMethod').value === 'pcls') ? 'block' : 'none';
+                (capable && cb.checked) ? 'block' : 'none';
         }
 
         document.getElementById('analysisType').addEventListener('change', (e) => {
@@ -2250,6 +2270,8 @@
             'final_surface_smoothing_iterations', 'periodic_surface_method',
             'periodic_surface_alpha_voxels', 'surface_export_background'
         ];
+        // Buckling keys of the augmented-Lagrangian multiplier update: PCLS and the level set only.
+        const BUCKLING_AL_KEYS = ['lambda3_initial', 'lambda3_clamp_max', 'mu3', 'mu3_decay_factor', 'mu3_floor', 'term_clamp'];
         // kind: 'float' | 'int' | 'bool' | 'select'. Bounds: lo/hi with loOpen/hiOpen
         // for open ends (absent = unbounded), as validated by the Python setters.
         const METHOD_PARAMS = {
@@ -2259,7 +2281,6 @@
                 { key: 'penalty_ramp_iterations', label: 'Penalty Ramp Iters', kind: 'int', def: 0, lo: 0 },
                 { key: 'filter_radius', label: 'Filter Radius', kind: 'float', def: 1.5, lo: 1, hi: 10 },
                 { key: 'move_limit', label: 'Move Limit', kind: 'float', def: 0.2, lo: 0, loOpen: true, hi: 1 },
-                { key: 'oc_damping', label: 'OC Damping', kind: 'float', def: 0.5, lo: 0, loOpen: true, hi: 1 },
                 { key: 'initial_density', label: 'Initial Density', kind: 'float', def: null, nullable: true, lo: 0, loOpen: true, hi: 1 },
                 { key: 'change_tolerance', label: 'Change Tol.', kind: 'float', def: 0.01, lo: 0, loOpen: true },
                 { key: 'min_iterations', label: 'Min Iters', kind: 'int', def: 20, lo: 0 },
@@ -2267,8 +2288,10 @@
                 { key: 'projection_eta', label: 'Projection Eta', kind: 'float', def: 0.5, lo: 0, loOpen: true, hi: 1, hiOpen: true },
                 { key: 'projection_beta_max', label: 'Projection Beta Max', kind: 'float', def: null, nullable: true, lo: 0 },
                 { key: 'projection_every', label: 'Projection Every', kind: 'int', def: 50, lo: 1 },
-                { key: 'profile', label: 'Profile', kind: 'select', def: null, nullable: true,
-                  options: [ { value: '', label: 'Standard' }, { value: 'demonstrator', label: 'Demonstrator twin' } ] }
+                { key: 'mma_asymptote_init', label: 'MMA Asymptote Init', kind: 'float', def: 0.5, lo: 0, loOpen: true, hi: 1, hiOpen: true },
+                { key: 'mma_asymptote_increase', label: 'MMA Asymptote Increase', kind: 'float', def: 1.2, lo: 1, loOpen: true },
+                { key: 'mma_asymptote_decrease', label: 'MMA Asymptote Decrease', kind: 'float', def: 0.7, lo: 0, loOpen: true, hi: 1, hiOpen: true },
+                { key: 'mma_constraint_penalty', label: 'MMA Constraint Penalty', kind: 'float', def: 1000.0, lo: 0, loOpen: true }
             ],
             levelset: [
                 { key: 'front_step', label: 'Front Step', kind: 'float', def: 0.5, lo: 0, loOpen: true, hi: 1 },
@@ -2289,7 +2312,12 @@
                 { key: 'topological_every', label: 'Topo. Every', kind: 'int', def: 10, lo: 1 },
                 { key: 'topological_fraction', label: 'Topo. Fraction', kind: 'float', def: 0.02, lo: 0, loOpen: true, hi: 1 },
                 { key: 'topological_hole_radius', label: 'Topo. Hole Radius', kind: 'float', def: 1.6, lo: 0, loOpen: true },
-                { key: 'topological_until', label: 'Topo. Until', kind: 'int', def: null, nullable: true, lo: 0 }
+                { key: 'topological_until', label: 'Topo. Until', kind: 'int', def: null, nullable: true, lo: 0 },
+                { key: 'buckling_normalisation', label: 'Buckling Normaliser', kind: 'select', def: 'band',
+                  options: [ { value: 'band', label: 'Front band (default)' }, { value: 'domain', label: 'Domain' } ] },
+                { key: 'buckling_speed_sampling', label: 'Buckling Speed Sampling', kind: 'select', def: 'interpolate',
+                  options: [ { value: 'interpolate', label: 'Interpolate (default)' }, { value: 'solid_side', label: 'Solid side' } ] },
+                { key: 'buckling_fixed_penalties', label: 'Buckling Fixed Penalties', kind: 'bool', def: true }
             ]
         };
         const methodParamEl = (method, prm) => document.getElementById(`${method}_${prm.key}`);
@@ -2331,6 +2359,12 @@
             if (method === 'pcls' || !METHOD_PARAMS[method]) return o;
             const out = { method: method };
             Object.keys(o).forEach(k => { if (BASELINE_COMMON_KEYS.includes(k)) out[k] = o[k]; });
+            // The buckling block is read by both baselines (docs/theory.md section 12.6); SIMP's MMA
+            // does not use the augmented-Lagrangian multiplier keys, so they are left out for it.
+            if (o.buckling) {
+                out.buckling = Object.assign({}, o.buckling);
+                if (method === 'simp') BUCKLING_AL_KEYS.forEach(k => { delete out.buckling[k]; });
+            }
             out[method] = readMethodBlock(method);
             return out;
         }
@@ -2343,6 +2377,9 @@
             const panel = document.getElementById(`panel_method_${method}`);
             if (panel) panel.style.display = 'block';
             document.querySelectorAll('.pcls-only').forEach(el => el.style.display = (method === 'pcls') ? '' : 'none');
+            // SIMP's MMA has its own multiplier for the buckling constraint (docs/theory.md section 12.6):
+            // the augmented-Lagrangian multiplier fields apply to PCLS and the level set only.
+            document.querySelectorAll('.buckling-no-simp').forEach(el => el.style.display = (method === 'simp') ? 'none' : '');
             document.getElementById('methodBackendWarn').style.display =
                 (method !== 'pcls' && document.getElementById('analysisType').value === 'conf') ? 'block' : 'none';
             refreshBucklingPanel();
@@ -3202,7 +3239,13 @@
                 mu3: num('buck_mu3'),
                 mu3_decay_factor: num('buck_mu3_decay'),
                 mu3_floor: num('buck_mu3_floor'),
-                term_clamp: num('buck_term_clamp')
+                term_clamp: num('buck_term_clamp'),
+                eigensolver_tol: num('buck_eig_tol'),
+                idle_evaluate_every: int('buck_idle_every'),
+                idle_margin: num('buck_idle_margin'),
+                idle_switch_tol: num('buck_idle_switch'),
+                settle_requires_full_ramp: document.getElementById('buck_settle_full').checked,
+                report_exported: document.getElementById('buck_report_exported').checked
             };
         }
 
@@ -3295,6 +3338,7 @@
                     convergence_detached_tol: parseFloat(document.getElementById('conv_detached').value),
                     reconnection_max_resets: parseInt(document.getElementById('reconn_resets').value),
                     convergence_exported_volume_tol: parseFloat(document.getElementById('conv_exported').value),
+                    freeze_reset_enabled: document.getElementById('freeze_reset').checked,
                     run_until_converged: document.getElementById('run_until_conv').checked,
                     // Blank or 0 means "no time limit" (null in the JSON).
                     time_limit_hours: (() => {
@@ -3444,6 +3488,7 @@
                     'reconn_resets': 'reconnection_max_resets', 'conv_exported': 'convergence_exported_volume_tol' };
                 for (const [id, key] of Object.entries(newOptMap)) { if (o[key] !== undefined && o[key] !== null) document.getElementById(id).value = o[key]; }
                 if (o.convergence_require_connected !== undefined) document.getElementById('conv_connected').checked = !!o.convergence_require_connected;
+                if (o.freeze_reset_enabled !== undefined) document.getElementById('freeze_reset').checked = !!o.freeze_reset_enabled;
                 if (o.run_until_converged !== undefined) document.getElementById('run_until_conv').checked = !!o.run_until_converged;
                 if (o.time_limit_hours !== undefined) document.getElementById('time_limit_h').value = (o.time_limit_hours === null ? '' : o.time_limit_hours);
                 if (o.mu1_floor !== undefined) document.getElementById('mu1_floor').value = (o.mu1_floor === null ? '' : o.mu1_floor);
@@ -3471,6 +3516,8 @@
                 // existed, which must keep loading cleanly with buckling off.
                 const b = o.buckling;
                 document.getElementById('bucklingEnabled').checked = !!(b && b.enabled);
+                document.getElementById('buck_report_exported').checked = !!(b && b.report_exported);
+                document.getElementById('buck_settle_full').checked = !!(b && b.settle_requires_full_ramp);
                 if (b) {
                     const buckMap = {
                         'buck_sf': 'safety_factor',
@@ -3489,7 +3536,11 @@
                         'buck_mu3': 'mu3',
                         'buck_mu3_decay': 'mu3_decay_factor',
                         'buck_mu3_floor': 'mu3_floor',
-                        'buck_term_clamp': 'term_clamp'
+                        'buck_term_clamp': 'term_clamp',
+                        'buck_eig_tol': 'eigensolver_tol',
+                        'buck_idle_every': 'idle_evaluate_every',
+                        'buck_idle_margin': 'idle_margin',
+                        'buck_idle_switch': 'idle_switch_tol'
                     };
                     for (const [id, key] of Object.entries(buckMap)) {
                         if (b[key] !== undefined) document.getElementById(id).value = b[key];
@@ -3673,6 +3724,7 @@
                 // The hidden method panels, and PCLS-only fields under a baseline method.
                 if (input.closest('.method-subpanel') && input.closest('.method-subpanel').style.display === 'none') continue;
                 if (selectedMethod !== 'pcls' && input.closest('.pcls-only')) continue;
+                if (selectedMethod === 'simp' && input.closest('.buckling-no-simp')) continue;
                 // Buckling fields are only required when the constraint is enabled.
                 if (input.dataset.buckling === 'true' &&
                     document.getElementById('panel_buckling').style.display === 'none') continue;
@@ -3735,12 +3787,6 @@
                         document.getElementById('simp_projection_beta').classList.add('error');
                         problems.push('- A projection continuation (Projection Beta Max) needs Projection Beta > 0 to start from.');
                     }
-                    if (block.profile === 'demonstrator' && (block.projection_beta > 0
-                            || (block.penalty_start !== null && block.penalty_start !== block.penalty))) {
-                        document.getElementById('simp_profile').classList.add('error');
-                        problems.push("- Profile 'Demonstrator twin' reproduces the browser twin, which has no projection "
-                            + 'and no continuation: set Projection Beta = 0 and leave Penalty Start blank.');
-                    }
                 }
                 if (problems.length > 0) {
                     goOptimiser();
@@ -3750,7 +3796,7 @@
             }
 
             // --- Buckling semantic validation ---
-            if (document.getElementById('bucklingEnabled').checked && selectedMethod === 'pcls') {
+            if (document.getElementById('bucklingEnabled').checked) {
                 const goAnalysis = () => document.querySelector('.tab-btn[data-target="tabAnalysis"]').click();
                 const sf     = parseFloat(document.getElementById('buck_sf').value);
                 const sfInit = parseFloat(document.getElementById('buck_sf_init').value);
@@ -4023,6 +4069,7 @@
             { id: 'ep_cdet', path: ['optimiser', 'convergence_detached_tol'], label: 'Detached Tol.', type: 'number', default: 0.005 },
             { id: 'ep_reconn', path: ['optimiser', 'reconnection_max_resets'], label: 'Reconnect Resets', type: 'number', default: 3 },
             { id: 'ep_cexp', path: ['optimiser', 'convergence_exported_volume_tol'], label: 'Exported Vol. Tol.', type: 'number', default: 0.15 },
+            { id: 'ep_freeze', path: ['optimiser', 'freeze_reset_enabled'], label: 'Freeze Release', type: 'bool', default: true },
             { id: 'ep_rtc', path: ['optimiser', 'run_until_converged'], label: 'Run Until Converged', type: 'bool', default: false },
             // 0 = no limit (the optimiser treats a non-positive time limit as none).
             { id: 'ep_tlim', path: ['optimiser', 'time_limit_hours'], label: 'Time Limit (h, 0=none)', type: 'number', default: 0 },
@@ -4251,7 +4298,7 @@
                 if ('method' in o) delete o.method;
                 dropped = Object.keys(METHOD_PARAMS).filter(m => m in o);
             } else if (METHOD_PARAMS[method]) {
-                dropped = Object.keys(o).filter(k => k !== 'method' && k !== method && !BASELINE_COMMON_KEYS.includes(k));
+                dropped = Object.keys(o).filter(k => k !== 'method' && k !== method && k !== 'buckling' && !BASELINE_COMMON_KEYS.includes(k));
             }
             dropped.forEach(k => delete o[k]);
             if (dropped.length && warnList) {
