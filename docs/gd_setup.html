@@ -395,28 +395,39 @@
                     <div><label>Mu3 Decay Fac. <span class="info-icon" data-tooltip="Decay factor for mu3 (PCLS; the level set holds mu3 fixed unless 'Buckling Fixed Penalties' is off), applied after an outer iteration only while the buckling constraint is violated and its violation shrank by less than 25 % (the adaptive rule mu1 already follows). mu3 no longer decays while the constraint is satisfied.">[?]</span></label><input type="number" id="buck_mu3_decay" value="0.9" step="0.05" min="0" max="1" data-req="true" data-buckling="true"></div>
                     <div><label>Mu3 Floor <span class="info-icon" data-tooltip="Lower bound on mu3, preventing the penalty from growing without limit. The old default (1e-4) let the modified multiplier jump between 0 and its cap on the sign of a tiny G3 (bang-bang); 0.01 keeps it continuous.">[?]</span></label><input type="number" id="buck_mu3_floor" value="0.01" data-req="true" data-buckling="true"></div>
                     <div><label>Term Clamp <span class="info-icon" data-tooltip="Symmetric per-voxel clamp on the normalised buckling update term, mirroring the stiffness term's clamp.">[?]</span></label><input type="number" id="buck_term_clamp" value="10.0" step="1" min="0" data-req="true" data-buckling="true"></div>
+                    <div class="pcls-only"><label>Term Normalisation <span class="info-icon" data-tooltip="PCLS only. How the buckling update term is scaled. 'winsorised' (default): divided by the density-weighted winsorised mean of its driver over the design voxels, exactly as the stiffness term is (docs/theory.md eq. 4.6b), so the term has a material-weighted mean of 1 in the material at any volume fraction. 'mean': the legacy plain mean of |term| over all voxels, which inflates the term by about 1/V0 at low volume fraction (then clipped by Term Clamp). Ignored by the baselines.">[?]</span></label><select id="buck_term_norm"><option value="winsorised" selected>Winsorised (default)</option><option value="mean">Mean (legacy)</option></select></div>
+                    <div><label>Ramp On Design Density <span class="info-icon" data-tooltip="On (default): the geometric-stiffness ramp below 'Min Geo. Stiff. Rho' is evaluated on the design density rho(phi), so grey voxels keep their geometric stiffness while still being penalised in the elastic stiffness. Off: the ramp acts on the penalised stiffness density (legacy).">[?]</span></label><input type="checkbox" id="buck_ramp_design" checked></div>
                 </div>
 
                 <h3 style="font-size:0.85rem; color:var(--text-muted); margin:12px 0 5px 0;">Run Cost</h3>
                 <div class="param-grid">
                     <div><label>Eigensolver Tol. <span class="info-icon" data-tooltip="Relative convergence tolerance of the ARPACK buckling eigensolve. 1e-12 (default) is about 21 % cheaper than machine precision (0) in back-substitutions. 1e-9 is about 39 % cheaper (22 % fewer than 1e-12) and showed no corrupted aggregate or sensitivity in about 300 test evaluations, but looser tolerances can miss a mode and 1e-6 did corrupt the sensitivity once in validation, so 1e-9 is an opt-in, not proven safe (theory.md section 6.10). Set 0 for machine precision (used by the finite-difference validation).">[?]</span></label><input type="number" id="buck_eig_tol" value="1e-12" step="any" min="0" data-req="true" data-buckling="true"></div>
-                    <div><label>Idle Evaluate Every <span class="info-icon" data-tooltip="While the constraint is idle (multiplier lambda3 and its modified value both zero, and the last critical load factor at least Idle Margin x the full safety factor), the eigensolve runs only every N inner iterations. Set to the same value as Evaluate Every, or lower, to disable the idle cadence.">[?]</span></label><input type="number" id="buck_idle_every" value="10" step="1" min="1" data-req="true" data-buckling="true"></div>
-                    <div><label>Idle Margin <span class="info-icon" data-tooltip="Headroom that defines 'idle': the last critical load factor must be at least this multiple of the full safety factor. Must be at least 1.">[?]</span></label><input type="number" id="buck_idle_margin" value="1.1" step="0.05" min="1" data-req="true" data-buckling="true"></div>
-                    <div><label>Idle Switch Tol. <span class="info-icon" data-tooltip="Idle cadence is interrupted and the eigensolve runs at once if the number of voxels that switched phase since the last evaluation exceeds this fraction of the design voxels.">[?]</span></label><input type="number" id="buck_idle_switch" value="1e-4" step="any" min="0" data-req="true" data-buckling="true"></div>
-                    <div><label>Settle Needs Full Ramp <span class="info-icon" data-tooltip="Off (default): the buckling settle test is judged against the safety factor currently enforced, so a design that satisfies the ramp can settle even before the ramp ends. On: the run cannot be declared converged until the safety factor has reached its full target.">[?]</span></label><input type="checkbox" id="buck_settle_full" data-buckling="true"></div>
+                    <div class="pcls-only"><label>Idle Evaluate Every <span class="info-icon" data-tooltip="While the constraint is idle (multiplier lambda3 and its modified value both zero, and the last critical load factor at least Idle Margin x the full safety factor), the eigensolve runs only every N inner iterations. Set to the same value as Evaluate Every, or lower, to disable the idle cadence.">[?]</span></label><input type="number" id="buck_idle_every" value="10" step="1" min="1" data-req="true" data-buckling="true"></div>
+                    <div class="pcls-only"><label>Idle Margin <span class="info-icon" data-tooltip="Headroom that defines 'idle': the last critical load factor must be at least this multiple of the full safety factor. Must be at least 1.">[?]</span></label><input type="number" id="buck_idle_margin" value="1.1" step="0.05" min="1" data-req="true" data-buckling="true"></div>
+                    <div class="pcls-only"><label>Idle Switch Tol. <span class="info-icon" data-tooltip="Idle cadence is interrupted and the eigensolve runs at once if the number of voxels that switched phase since the last evaluation exceeds this fraction of the design voxels.">[?]</span></label><input type="number" id="buck_idle_switch" value="1e-4" step="any" min="0" data-req="true" data-buckling="true"></div>
+                    <div class="pcls-only"><label>Settle Needs Full Ramp <span class="info-icon" data-tooltip="Off (default): the buckling settle test is judged against the safety factor currently enforced, so a design that satisfies the ramp can settle even before the ramp ends. On: the run cannot be declared converged until the safety factor has reached its full target.">[?]</span></label><input type="checkbox" id="buck_settle_full" data-buckling="true"></div>
                 </div>
             </div>
 
             <!-- FINAL SURFACE EXPORT -->
             <h2>Final Surface Export</h2>
             <div style="font-size:0.75rem; color:var(--text-muted); margin-bottom:10px; line-height:1.4;">
-                On the guaranteed final save, a marching-cubes + CGAL alpha-wrap surface mesh of the
-                optimised structure is produced regardless of analysis backend. These three settings
-                override the alpha-wrap tuning used for that FILTERED final-surface pass only (the
-                unfiltered "raw" pass always keeps every fragment). Leave blank to reuse the Conformal
-                analysis settings above (Regular/CG fall back to Conformal's own defaults: 0.1 / 0.01 / 5.0).
+                On the guaranteed final save, a surface mesh (STL) of the optimised structure is produced regardless of
+                analysis backend: a marching-cubes surface, wrapped once by CGAL's alpha wrap (or the marching-cubes surface
+                itself), with a quality report (volume ratio, manifold, topology, Hausdorff distance). The wrap is specified in
+                VOXELS, so it does not depend on the size of the domain. The periodic surfaces written on the save frequency
+                have their own method and alpha. The three proportion settings below are the older, bounding-box-based way of
+                setting the wrap: when given they take precedence over the voxel-based ones.
             </div>
             <div class="param-grid">
+                <div><label>Method (final) <span class="info-icon" data-tooltip="final_surface_method. 'alpha_wrap' (default): marching cubes on the optimised field, then one CGAL alpha wrap (closed, manifold, watertight). 'marching_cubes': the marching-cubes surface of the same field on the voxel grid with no wrap and no CGAL needed (faster; may keep stair-steps and non-manifold edges).">[?]</span></label><select id="final_method"><option value="alpha_wrap" selected>Alpha wrap (default)</option><option value="marching_cubes">Marching cubes</option></select></div>
+                <div><label>Alpha (voxels) <span class="info-icon" data-tooltip="final_surface_alpha_voxels. The alpha of the final wrap in voxels (default 1.5): features thinner than about this are bridged, so it sets the finest detail kept. > 0. Ignored when 'Alpha Prop. (final)' is given.">[?]</span></label><input type="number" id="final_alpha_vox" value="1.5" min="0" step="any" data-req="true"></div>
+                <div><label>Offset / Alpha <span class="info-icon" data-tooltip="final_surface_offset_ratio. The wrap's offset as a multiple of alpha (default 1/30 = 0.0333). > 0. Ignored when 'Offset Prop. (final)' is given.">[?]</span></label><input type="number" id="final_offset_ratio" value="0.03333333333333333" min="0" step="any" data-req="true"></div>
+                <div><label>Min Component Fraction <span class="info-icon" data-tooltip="final_surface_min_component_fraction. Solid components smaller than this fraction of the solid voxels are dropped from the FILTERED final surface (the raw one keeps every fragment). Default 0.01; in [0, 1).">[?]</span></label><input type="number" id="final_min_comp" value="0.01" min="0" max="0.999999" step="any" data-req="true"></div>
+                <div><label>Smoothing Iterations <span class="info-icon" data-tooltip="final_surface_smoothing_iterations. Taubin smoothing passes applied to the final surface (default 0 = none). Integer >= 0.">[?]</span></label><input type="number" id="final_smooth" value="0" min="0" step="1" data-req="true"></div>
+                <div><label>Method (periodic) <span class="info-icon" data-tooltip="periodic_surface_method. The surface written with every saved iteration (see Save Frequency): 'alpha_wrap' (default) or 'marching_cubes' (no CGAL, much cheaper).">[?]</span></label><select id="periodic_method"><option value="alpha_wrap" selected>Alpha wrap (default)</option><option value="marching_cubes">Marching cubes</option></select></div>
+                <div><label>Alpha (periodic, voxels) <span class="info-icon" data-tooltip="periodic_surface_alpha_voxels. Alpha of the periodic wraps in voxels (default 1.5). > 0.">[?]</span></label><input type="number" id="periodic_alpha_vox" value="1.5" min="0" step="any" data-req="true"></div>
+                <div><label>Periodic Export In Background <span class="info-icon" data-tooltip="surface_export_background. Run the periodic surface exports in a separate process so that the optimisation does not wait for them (default off). The final surface is always written in the run itself.">[?]</span></label><input type="checkbox" id="surface_bg"></div>
                 <div><label>Alpha Prop. (final) <span class="info-icon" data-tooltip="Alpha-wrap 'alpha' tuning for the filtered final-surface pass, as a proportion of the geometry's bounding box diagonal. Blank (recommended) = use final_surface_alpha_voxels, an alpha of 1.5 voxels, which does not depend on the domain size. A value here overrides that; 0.1 is a 17-voxel ball on a 160x40x40 domain and fills the design in.">[?]</span></label><input type="number" id="final_alpha_prop" value="" min="0" placeholder="auto"></div>
                 <div><label>Offset Prop. (final) <span class="info-icon" data-tooltip="Alpha-wrap 'offset' tuning for the filtered final-surface pass, as a proportion of the geometry's bounding box diagonal. Blank (recommended) = alpha/30 (final_surface_offset_ratio). A value here overrides that.">[?]</span></label><input type="number" id="final_offset_prop" value="" min="0" placeholder="auto"></div>
                 <div><label>Num Cells Cutoff (final) <span class="info-icon" data-tooltip="Deprecated and ignored: small components are now removed on the voxel grid (final_surface_min_component_fraction, default 1% of the solid voxels).">[?]</span></label><input type="number" id="final_num_cutoff" value="" min="0" placeholder="auto"></div>
@@ -467,7 +478,10 @@
 
             <div id="panel_method_levelset" class="method-subpanel" style="display:none;">
                 <div class="param-grid">
-                    <div><label>Front Step <span class="info-icon" data-tooltip="Distance the fastest point of the boundary moves in one iteration, in voxels. (0, 1].">[?]</span></label><input type="number" id="levelset_front_step" value="0.5" min="0" max="1" step="0.05" data-req="true"></div>
+                    <div><label>Front Step <span class="info-icon" data-tooltip="Distance the fastest point of the boundary moves in one iteration, in voxels. With 'Adaptive Front Step' on, this is the largest step; the step shrinks when the design oscillates and recovers when it does not. (0, 1].">[?]</span></label><input type="number" id="levelset_front_step" value="0.5" min="0" max="1" step="0.05" data-req="true"></div>
+                    <div><label>Adaptive Front Step <span class="info-icon" data-tooltip="Shrink the front step (x0.7) when the boundary speed flips sign at a significant share of the front voxels (oscillation) or the augmented-Lagrangian merit rises, and let it grow back (x1.05, up to Front Step) otherwise. On by default; off = the fixed Front Step of earlier versions (docs/theory.md eq. 12.25).">[?]</span></label><input type="checkbox" id="levelset_adaptive_front_step" checked></div>
+                    <div><label>Front Step Min <span class="info-icon" data-tooltip="Smallest front step the adaptive rule may reach, in voxels. (0, Front Step].">[?]</span></label><input type="number" id="levelset_front_step_min" value="0.02" min="0" max="1" step="0.01" data-req="true"></div>
+                    <div><label>Oscillation Tol. <span class="info-icon" data-tooltip="Share of the front voxels whose speed flipped sign since the last iteration above which the front step is shrunk. (0, 1].">[?]</span></label><input type="number" id="levelset_oscillation_tol" value="0.15" min="0" max="1" step="0.05" data-req="true"></div>
                     <div><label>CFL <span class="info-icon" data-tooltip="Largest boundary advance in one sub-step of the upwind transport, in voxels; the iteration takes ceil(Front Step / CFL) sub-steps. Below 1/sqrt(6) = 0.408 the scheme obeys a discrete minimum principle. (0, 0.4].">[?]</span></label><input type="number" id="levelset_cfl" value="0.4" min="0" max="0.4" step="0.05" data-req="true"></div>
                     <div><label>Reinit Every <span class="info-icon" data-tooltip="Re-initialise the level-set function to a signed distance every N iterations. 0 = never. Integer >= 0.">[?]</span></label><input type="number" id="levelset_reinit_every" value="5" min="0" step="1" data-req="true"></div>
                     <div><label>Reinit Method <span class="info-icon" data-tooltip="'Surface' (default): the exact distance to the triangulated zero level set, second-order accurate. 'Crossings': the distance to the nearest grid crossing of the boundary, as the browser demonstrator's twin does; it over-estimates the distance next to the boundary by up to about half a voxel.">[?]</span></label><select id="levelset_reinit_method"><option value="surface" selected>Surface</option><option value="crossings">Crossings (twin)</option></select></div>
@@ -484,7 +498,9 @@
                     <div><label>Topo. Every <span class="info-icon" data-tooltip="Iterations between hole insertions. Integer >= 1.">[?]</span></label><input type="number" id="levelset_topological_every" value="10" min="1" step="1" data-req="true"></div>
                     <div><label>Topo. Fraction <span class="info-icon" data-tooltip="Largest share of the solid design volume removed by one insertion. (0, 1].">[?]</span></label><input type="number" id="levelset_topological_fraction" value="0.02" min="0" max="1" data-req="true"></div>
                     <div><label>Topo. Hole Radius <span class="info-icon" data-tooltip="Radius of an inserted hole, in voxels; a hole is placed only where it lies entirely inside the solid. > 0.">[?]</span></label><input type="number" id="levelset_topological_hole_radius" value="1.6" min="0" data-req="true"></div>
-                    <div><label>Topo. Until <span class="info-icon" data-tooltip="No hole is inserted from this iteration on. Blank (default) = no limit. Integer >= 0.">[?]</span></label><input type="number" id="levelset_topological_until" value="" min="0" step="1" placeholder="no limit"></div>
+                    <div><label>Topo. Until <span class="info-icon" data-tooltip="No hole is inserted from this iteration on. Blank (default) = automatic: a third of the iteration budget (outer x inner iterations). -1 = no limit. Integer >= 0 = explicit iteration (0 = never insert).">[?]</span></label><input type="number" id="levelset_topological_until" value="" min="-1" step="1" placeholder="auto (1/3 budget)"></div>
+                    <div><label>Topo. Keep Connected <span class="info-icon" data-tooltip="Insert a hole only if the solid keeps its load paths (26-connectivity): the holes of one insertion are tested together, then one by one if the batch breaks a path or detaches material (docs/theory.md section 12.4, eq. 12.33b). On by default.">[?]</span></label><input type="checkbox" id="levelset_topological_keep_connected" checked></div>
+                    <div><label>Topo. Connectivity Margin <span class="info-icon" data-tooltip="The connectivity test uses holes this many voxels LARGER than the inserted ones, so a hole that would leave a one-voxel-thick member is also refused. >= 0; 0 tests the hole as inserted.">[?]</span></label><input type="number" id="levelset_topological_connectivity_margin" value="1.0" min="0" step="0.1" data-req="true"></div>
                     <div><label>Buckling Normaliser <span class="info-icon" data-tooltip="Level set with the buckling constraint: the buckling speed is the density sensitivity divided by its mean magnitude, taken over the voxels next to the front (default) or over the domain voxels within half a voxel of it. Used only with buckling enabled (docs/theory.md eq. 12.43).">[?]</span></label><select id="levelset_buckling_normalisation"><option value="band" selected>Front band (default)</option><option value="domain">Domain</option></select></div>
                     <div><label>Buckling Speed Sampling <span class="info-icon" data-tooltip="Level set with the buckling constraint: how the buckling speed is read at the front, interpolated along the grid line like the compliance speed (default; a test found it removes more of the aggregate per unit of material moved) or taken at the solid-side voxel. Boundary motion only: there is no buckling topological derivative, so the level set cannot create holes for buckling (docs/theory.md section 12.6).">[?]</span></label><select id="levelset_buckling_speed_sampling"><option value="interpolate" selected>Interpolate (default)</option><option value="solid_side">Solid side</option></select></div>
                     <div><label>Buckling Fixed Penalties <span class="info-icon" data-tooltip="Level set with the buckling constraint: hold the penalties mu1 (volume) and mu3 (buckling) at their initial values instead of letting them decay to their floors. The decay makes the multiplier prediction act as a relay of gain 1/mu and made the load factor swing; held, the run settles smoothly. Off = the decay rule (the Mu3 Decay Fac. and Floor fields and the LS Mu1 Floor then apply). Has no effect without the buckling constraint.">[?]</span></label><input type="checkbox" id="levelset_buckling_fixed_penalties" checked></div>
@@ -500,9 +516,11 @@
                 <div><label>Target Volume <span class="info-icon" data-tooltip="Target volume fraction.">[?]</span></label><input type="number" id="target_vol" value="0.5" data-req="true"></div>
                 <div class="pcls-only"><label>Beta <span class="info-icon" data-tooltip="Total-variation (perimeter) regularisation weight. Larger values give smoother, fewer-holed boundaries. NOTE: the diffusivity used to be computed from an undivided central difference, which halved the effective beta; that is now fixed, so halve any beta tuned before this change to reproduce the old behaviour.">[?]</span></label><input type="number" id="beta" value="0.125" data-req="true"></div>
                 <div class="pcls-only"><label>dt (Time step) <span class="info-icon" data-tooltip="Time step size.">[?]</span></label><input type="number" id="dt" value="0.02" data-req="true"></div>
+                <div class="pcls-only"><label>AOS Epsilon <span class="info-icon" data-tooltip="Regularisation epsilon of the total-variation diffusivity D = 1/sqrt(|grad phi|^2 + epsilon^2) in the semi-implicit (AOS) step, in units of phi per voxel. The default 0.1 keeps the step stable and smooths the interface over about one voxel; much smaller values (1e-8, the pre-2026-10 default) make D blow up in flat regions of phi and give a stiffer, noisier step. > 0.">[?]</span></label><input type="number" id="aos_eps" value="0.1" step="any" min="0" data-req="true"></div>
                 <div class="pcls-only"><label>Const. Iters Conv. <span class="info-icon" data-tooltip="Consecutive stationary iterations needed before the inner loop exits early.">[?]</span></label><input type="number" id="const_iters" value="3" data-req="true"></div>
                 <div><label>Save Frequency <span class="info-icon" data-tooltip="Saves 3D meshes and creates data folders only every Nth inner iteration.">[?]</span></label><input type="number" id="save_freq" value="10" min="1" data-req="true"></div>
                 <div><label>Random Seed <span class="info-icon" data-tooltip="Seed for the initial noisy phi field. Default 42, so runs are repeatable and comparable. Clear the field (blank = null in the JSON) to let the optimiser draw its own seed at run time; it is printed and saved in run_info.json either way, so any run can be repeated exactly by reading it back. Set this to reproduce a specific earlier run, e.g. via --set optimiser.random_seed=1234567.">[?]</span></label><input type="number" id="random_seed" value="42" step="1" placeholder="auto (random)"></div>
+                <div><label>Initial Design <span class="info-icon" data-tooltip="Start from a previous design instead of the method's own start: path of a .npz holding phi (a run's final_fields.npz or a history/phi_N.npz snapshot), a .npy of phi, or a run directory; relative to the working directory, else to the problem file. Must have this problem's grid; any method's result can seed any method. Blank = the method's own start (docs/theory.md section 8.1, eq. 8.1a). Not written to the JSON when blank.">[?]</span></label><input type="text" id="initial_design" value="" placeholder="none (default)"></div>
             </div>
 
             <h2 class="pcls-only">Constraints & Decay</h2>
@@ -2254,12 +2272,12 @@
         // (simp_optimiser.py, levelset_optimiser.py), with the same defaults and
         // bounds. `nullable` parameters are written as null when left blank.
         const OPTIMISER_METHODS = ['pcls', 'simp', 'levelset'];
-        // BaselineOptimiser.COMMON_PARAMETERS: the optimiser keys a baseline shares
+        // BaseOptimiser.COMMON_PARAMETERS: the optimiser keys a baseline shares
         // with PCLS; every other key of a PCLS block is PCLS-only.
         const BASELINE_COMMON_KEYS = [
             'outer_loop_max_iters', 'inner_loop_max_iters', 'outer_loop_convergence_threshold',
             'target_volume', 'void_density', 'solid_value', 'void_value', 'save_frequency',
-            'random_seed', 'run_until_converged', 'time_limit_hours',
+            'random_seed', 'initial_design', 'run_until_converged', 'time_limit_hours',
             'convergence_window', 'convergence_compliance_tol', 'convergence_switch_tol',
             'convergence_require_connected', 'convergence_detached_tol', 'convergence_exported_volume_tol',
             'history_every', 'exported_analysis_every', 'postprocess',
@@ -2272,6 +2290,8 @@
         ];
         // Buckling keys of the augmented-Lagrangian multiplier update: PCLS and the level set only.
         const BUCKLING_AL_KEYS = ['lambda3_initial', 'lambda3_clamp_max', 'mu3', 'mu3_decay_factor', 'mu3_floor', 'term_clamp'];
+        // Buckling keys only PCLS reads (the baselines would reject them): left out of a baseline's block.
+        const BUCKLING_PCLS_ONLY_KEYS = ['term_normalisation', 'idle_evaluate_every', 'idle_margin', 'idle_switch_tol', 'settle_requires_full_ramp'];
         // kind: 'float' | 'int' | 'bool' | 'select'. Bounds: lo/hi with loOpen/hiOpen
         // for open ends (absent = unbounded), as validated by the Python setters.
         const METHOD_PARAMS = {
@@ -2295,6 +2315,9 @@
             ],
             levelset: [
                 { key: 'front_step', label: 'Front Step', kind: 'float', def: 0.5, lo: 0, loOpen: true, hi: 1 },
+                { key: 'adaptive_front_step', label: 'Adaptive Front Step', kind: 'bool', def: true },
+                { key: 'front_step_min', label: 'Front Step Min', kind: 'float', def: 0.02, lo: 0, loOpen: true, hi: 1 },
+                { key: 'oscillation_tol', label: 'Oscillation Tol.', kind: 'float', def: 0.15, lo: 0, loOpen: true, hi: 1 },
                 { key: 'cfl', label: 'CFL', kind: 'float', def: 0.4, lo: 0, loOpen: true, hi: 0.4 },
                 { key: 'reinit_every', label: 'Reinit Every', kind: 'int', def: 5, lo: 0 },
                 { key: 'reinit_method', label: 'Reinit Method', kind: 'select', def: 'surface',
@@ -2312,7 +2335,9 @@
                 { key: 'topological_every', label: 'Topo. Every', kind: 'int', def: 10, lo: 1 },
                 { key: 'topological_fraction', label: 'Topo. Fraction', kind: 'float', def: 0.02, lo: 0, loOpen: true, hi: 1 },
                 { key: 'topological_hole_radius', label: 'Topo. Hole Radius', kind: 'float', def: 1.6, lo: 0, loOpen: true },
-                { key: 'topological_until', label: 'Topo. Until', kind: 'int', def: null, nullable: true, lo: 0 },
+                { key: 'topological_until', label: 'Topo. Until', kind: 'int', def: null, nullable: true, lo: -1 },
+                { key: 'topological_keep_connected', label: 'Topo. Keep Connected', kind: 'bool', def: true },
+                { key: 'topological_connectivity_margin', label: 'Topo. Connectivity Margin', kind: 'float', def: 1.0, lo: 0 },
                 { key: 'buckling_normalisation', label: 'Buckling Normaliser', kind: 'select', def: 'band',
                   options: [ { value: 'band', label: 'Front band (default)' }, { value: 'domain', label: 'Domain' } ] },
                 { key: 'buckling_speed_sampling', label: 'Buckling Speed Sampling', kind: 'select', def: 'interpolate',
@@ -2363,6 +2388,7 @@
             // does not use the augmented-Lagrangian multiplier keys, so they are left out for it.
             if (o.buckling) {
                 out.buckling = Object.assign({}, o.buckling);
+                BUCKLING_PCLS_ONLY_KEYS.forEach(k => { delete out.buckling[k]; });
                 if (method === 'simp') BUCKLING_AL_KEYS.forEach(k => { delete out.buckling[k]; });
             }
             out[method] = readMethodBlock(method);
@@ -3240,6 +3266,8 @@
                 mu3_decay_factor: num('buck_mu3_decay'),
                 mu3_floor: num('buck_mu3_floor'),
                 term_clamp: num('buck_term_clamp'),
+                term_normalisation: document.getElementById('buck_term_norm').value,
+                ramp_on_design_density: document.getElementById('buck_ramp_design').checked,
                 eigensolver_tol: num('buck_eig_tol'),
                 idle_evaluate_every: int('buck_idle_every'),
                 idle_margin: num('buck_idle_margin'),
@@ -3303,6 +3331,7 @@
                     lambda1_clamp_max: parseFloat(document.getElementById('lam1_clamp').value),
                     lambda2_clamp_max: parseFloat(document.getElementById('lam2_clamp').value),
                     dt: parseFloat(document.getElementById('dt').value),
+                    aos_epsilon: parseFloat(document.getElementById('aos_eps').value),
                     initial_noise_multiplier: parseFloat(document.getElementById('noise_mult').value),
                     solid_value: parseFloat(document.getElementById('solid_val').value),
                     void_value: parseFloat(document.getElementById('void_val').value),
@@ -3318,6 +3347,9 @@
                         const v = document.getElementById('random_seed').value;
                         return (v === '' || v === null) ? null : parseInt(v);
                     })(),
+                    // Written only when set, so files without an initial design round-trip unchanged.
+                    ...(document.getElementById('initial_design').value.trim() !== ''
+                        ? { initial_design: document.getElementById('initial_design').value.trim() } : {}),
                     // Penalised stiffness continuation and convergence / run control
                     // (docs/theory.md §4.7, §5.4-§5.6).
                     penalisation_power_max: parseFloat(document.getElementById('pen_pmax').value),
@@ -3375,6 +3407,15 @@
                         const v = parseFloat(document.getElementById('final_num_cutoff').value);
                         return Number.isFinite(v) ? v : null;
                     })(),
+                    // Voxel-based surface export (docs/theory.md §8.4): always written, with the defaults of the code.
+                    final_surface_method: document.getElementById('final_method').value,
+                    final_surface_alpha_voxels: parseFloat(document.getElementById('final_alpha_vox').value),
+                    final_surface_offset_ratio: parseFloat(document.getElementById('final_offset_ratio').value),
+                    final_surface_min_component_fraction: parseFloat(document.getElementById('final_min_comp').value),
+                    final_surface_smoothing_iterations: parseInt(document.getElementById('final_smooth').value),
+                    periodic_surface_method: document.getElementById('periodic_method').value,
+                    periodic_surface_alpha_voxels: parseFloat(document.getElementById('periodic_alpha_vox').value),
+                    surface_export_background: document.getElementById('surface_bg').checked,
                     // Nested block, matching ProblemParser.BUCKLING_KEY_MAP. Always
                     // emitted (with enabled:false when off) so that batch edits and
                     // sweeps have a stable path to target.
@@ -3486,6 +3527,8 @@
                     'conv_grey': 'convergence_grey_tol', 'conv_comp': 'convergence_compliance_tol',
                     'conv_switch': 'convergence_switch_tol', 'conv_detached': 'convergence_detached_tol',
                     'reconn_resets': 'reconnection_max_resets', 'conv_exported': 'convergence_exported_volume_tol' };
+                // Absent = the optimiser's default 0.1 (files written before the key existed).
+                document.getElementById('aos_eps').value = (o.aos_epsilon !== undefined && o.aos_epsilon !== null) ? o.aos_epsilon : 0.1;
                 for (const [id, key] of Object.entries(newOptMap)) { if (o[key] !== undefined && o[key] !== null) document.getElementById(id).value = o[key]; }
                 if (o.convergence_require_connected !== undefined) document.getElementById('conv_connected').checked = !!o.convergence_require_connected;
                 if (o.freeze_reset_enabled !== undefined) document.getElementById('freeze_reset').checked = !!o.freeze_reset_enabled;
@@ -3493,6 +3536,7 @@
                 if (o.time_limit_hours !== undefined) document.getElementById('time_limit_h').value = (o.time_limit_hours === null ? '' : o.time_limit_hours);
                 if (o.mu1_floor !== undefined) document.getElementById('mu1_floor').value = (o.mu1_floor === null ? '' : o.mu1_floor);
                 if (o.random_seed !== undefined) document.getElementById('random_seed').value = (o.random_seed === null ? '' : o.random_seed);
+                document.getElementById('initial_design').value = (o.initial_design === undefined || o.initial_design === null) ? '' : o.initial_design;
                 if (o.cut_step_max_halvings !== undefined) document.getElementById('cut_step_halvings').value = o.cut_step_max_halvings;
 
                 // Output & post-processing. Files written before these existed keep
@@ -3512,12 +3556,25 @@
                 if (o.final_surface_offset_proportion !== undefined) document.getElementById('final_offset_prop').value = (o.final_surface_offset_proportion === null ? '' : o.final_surface_offset_proportion);
                 if (o.final_surface_num_cells_cutoff !== undefined) document.getElementById('final_num_cutoff').value = (o.final_surface_num_cells_cutoff === null ? '' : o.final_surface_num_cells_cutoff);
 
+                // Voxel-based surface export: absent (older files) = the optimiser's default.
+                document.getElementById('final_method').value = (o.final_surface_method !== undefined) ? o.final_surface_method : 'alpha_wrap';
+                document.getElementById('final_alpha_vox').value = (o.final_surface_alpha_voxels !== undefined) ? o.final_surface_alpha_voxels : 1.5;
+                document.getElementById('final_offset_ratio').value = (o.final_surface_offset_ratio !== undefined) ? o.final_surface_offset_ratio : 1 / 30;
+                document.getElementById('final_min_comp').value = (o.final_surface_min_component_fraction !== undefined) ? o.final_surface_min_component_fraction : 0.01;
+                document.getElementById('final_smooth').value = (o.final_surface_smoothing_iterations !== undefined) ? o.final_surface_smoothing_iterations : 0;
+                document.getElementById('periodic_method').value = (o.periodic_surface_method !== undefined) ? o.periodic_surface_method : 'alpha_wrap';
+                document.getElementById('periodic_alpha_vox').value = (o.periodic_surface_alpha_voxels !== undefined) ? o.periodic_surface_alpha_voxels : 1.5;
+                document.getElementById('surface_bg').checked = !!o.surface_export_background;
+
                 // Buckling block. Absent in files exported before this feature
                 // existed, which must keep loading cleanly with buckling off.
                 const b = o.buckling;
                 document.getElementById('bucklingEnabled').checked = !!(b && b.enabled);
                 document.getElementById('buck_report_exported').checked = !!(b && b.report_exported);
                 document.getElementById('buck_settle_full').checked = !!(b && b.settle_requires_full_ramp);
+                // Absent = the optimiser's default (on): files written before the key existed.
+                document.getElementById('buck_ramp_design').checked = !(b && b.ramp_on_design_density === false);
+                if (!(b && b.term_normalisation !== undefined)) document.getElementById('buck_term_norm').value = 'winsorised';
                 if (b) {
                     const buckMap = {
                         'buck_sf': 'safety_factor',
@@ -3537,6 +3594,7 @@
                         'buck_mu3_decay': 'mu3_decay_factor',
                         'buck_mu3_floor': 'mu3_floor',
                         'buck_term_clamp': 'term_clamp',
+                        'buck_term_norm': 'term_normalisation',
                         'buck_eig_tol': 'eigensolver_tol',
                         'buck_idle_every': 'idle_evaluate_every',
                         'buck_idle_margin': 'idle_margin',
@@ -4034,11 +4092,13 @@
             { id: 'ep_tv', path: ['optimiser', 'target_volume'], label: 'Target Volume', type: 'number', default: 0.5 },
             { id: 'ep_bt', path: ['optimiser', 'beta'], label: 'Beta', type: 'number', default: 0.125 },
             { id: 'ep_dt', path: ['optimiser', 'dt'], label: 'dt (Time step)', type: 'number', default: 0.02 },
+            { id: 'ep_aos', path: ['optimiser', 'aos_epsilon'], label: 'AOS Epsilon', type: 'number', default: 0.1 },
             { id: 'ep_ci', path: ['optimiser', 'constant_iters_for_convergence'], label: 'Const. Iters', type: 'number', default: 3 },
             { id: 'ep_sf', path: ['optimiser', 'save_frequency'], label: 'Save Freq.', type: 'number', default: 10 },
             // Default 42. (A batch value is written as a number, so 0 is the seed 0, not
             // 'random'; use the single-problem editor's blank field for null.)
             { id: 'ep_seed', path: ['optimiser', 'random_seed'], label: 'Random Seed', type: 'number', default: 42 },
+            { id: 'ep_initdesign', path: ['optimiser', 'initial_design'], label: 'Initial Design', type: 'text', default: '' },
             { id: 'ep_m1', path: ['optimiser', 'mu1'], label: 'Mu1 Initial', type: 'number', default: 0.2 },
             { id: 'ep_m1d', path: ['optimiser', 'mu1_decay_factor'], label: 'Mu1 Decay Fac.', type: 'number', default: 0.9 },
             // 0 = automatic (the optimiser treats a non-positive floor as dt*(1-void_density)^2).
@@ -4108,6 +4168,18 @@
             { id: 'ep_fsoffset', path: ['optimiser', 'final_surface_offset_proportion'], label: 'Offset Prop. (final, 0=auto)', type: 'number', default: 0 },
             { id: 'ep_fscutoff', path: ['optimiser', 'final_surface_num_cells_cutoff'], label: 'Num Cells Cutoff (final, 0=auto)', type: 'number', default: 0 },
 
+            // Voxel-based surface export (docs/theory.md §8.4); the proportions above take precedence when given.
+            { id: 'ep_fsmethod', path: ['optimiser', 'final_surface_method'], label: 'Method (final)', type: 'select', default: 'alpha_wrap',
+              options: [ { value: 'alpha_wrap', label: 'Alpha wrap' }, { value: 'marching_cubes', label: 'Marching cubes' } ] },
+            { id: 'ep_fsav', path: ['optimiser', 'final_surface_alpha_voxels'], label: 'Alpha (final, voxels)', type: 'number', default: 1.5 },
+            { id: 'ep_fsor', path: ['optimiser', 'final_surface_offset_ratio'], label: 'Offset / Alpha (final)', type: 'number', default: 1 / 30 },
+            { id: 'ep_fsmc', path: ['optimiser', 'final_surface_min_component_fraction'], label: 'Min Component Fraction', type: 'number', default: 0.01 },
+            { id: 'ep_fssm', path: ['optimiser', 'final_surface_smoothing_iterations'], label: 'Smoothing Iterations', type: 'number', default: 0 },
+            { id: 'ep_psmethod', path: ['optimiser', 'periodic_surface_method'], label: 'Method (periodic)', type: 'select', default: 'alpha_wrap',
+              options: [ { value: 'alpha_wrap', label: 'Alpha wrap' }, { value: 'marching_cubes', label: 'Marching cubes' } ] },
+            { id: 'ep_psav', path: ['optimiser', 'periodic_surface_alpha_voxels'], label: 'Alpha (periodic, voxels)', type: 'number', default: 1.5 },
+            { id: 'ep_psbg', path: ['optimiser', 'surface_export_background'], label: 'Periodic Export In Background', type: 'bool', default: false },
+
             { header: 'Buckling Constraint (G3)' },
             { id: 'ep_bk_en',    path: ['optimiser', 'buckling', 'enabled'], label: 'Buckling Enabled', type: 'bool', default: false },
             { id: 'ep_bk_sf',    path: ['optimiser', 'buckling', 'safety_factor'], label: 'Safety Factor', type: 'number', default: 2.5 },
@@ -4127,7 +4199,16 @@
             { id: 'ep_bk_mu3',   path: ['optimiser', 'buckling', 'mu3'], label: 'Mu3 Initial', type: 'number', default: 0.1 },
             { id: 'ep_bk_mu3d',  path: ['optimiser', 'buckling', 'mu3_decay_factor'], label: 'Mu3 Decay Fac.', type: 'number', default: 0.9 },
             { id: 'ep_bk_mu3f',  path: ['optimiser', 'buckling', 'mu3_floor'], label: 'Mu3 Floor', type: 'number', default: 0.01 },
-            { id: 'ep_bk_tc',    path: ['optimiser', 'buckling', 'term_clamp'], label: 'Term Clamp', type: 'number', default: 10.0 }
+            { id: 'ep_bk_tc',    path: ['optimiser', 'buckling', 'term_clamp'], label: 'Term Clamp', type: 'number', default: 10.0 },
+            { id: 'ep_bk_tn',    path: ['optimiser', 'buckling', 'term_normalisation'], label: 'Term Normalisation (PCLS)', type: 'select', default: 'winsorised',
+              options: [ { value: 'winsorised', label: 'Winsorised (default)' }, { value: 'mean', label: 'Mean (legacy)' } ] },
+            { id: 'ep_bk_rdd',   path: ['optimiser', 'buckling', 'ramp_on_design_density'], label: 'Ramp On Design Density', type: 'bool', default: true },
+            { id: 'ep_bk_eig',   path: ['optimiser', 'buckling', 'eigensolver_tol'], label: 'Eigensolver Tol.', type: 'number', default: 1e-12 },
+            { id: 'ep_bk_rep',   path: ['optimiser', 'buckling', 'report_exported'], label: 'Report Exported Load (off)', type: 'bool', default: false },
+            { id: 'ep_bk_ide',   path: ['optimiser', 'buckling', 'idle_evaluate_every'], label: 'Idle Evaluate Every (PCLS)', type: 'number', default: 10 },
+            { id: 'ep_bk_idm',   path: ['optimiser', 'buckling', 'idle_margin'], label: 'Idle Margin (PCLS)', type: 'number', default: 1.1 },
+            { id: 'ep_bk_ids',   path: ['optimiser', 'buckling', 'idle_switch_tol'], label: 'Idle Switch Tol. (PCLS)', type: 'number', default: 1e-4 },
+            { id: 'ep_bk_stf',   path: ['optimiser', 'buckling', 'settle_requires_full_ramp'], label: 'Settle Needs Full Ramp (PCLS)', type: 'bool', default: false }
         ];
 
         // --- 9. Batch Process Logic ---
@@ -4301,6 +4382,12 @@
                 dropped = Object.keys(o).filter(k => k !== 'method' && k !== method && k !== 'buckling' && !BASELINE_COMMON_KEYS.includes(k));
             }
             dropped.forEach(k => delete o[k]);
+            // Buckling keys a baseline does not read (PCLS-only; the multiplier keys for SIMP's MMA).
+            if (method !== 'pcls' && METHOD_PARAMS[method] && o.buckling && typeof o.buckling === 'object') {
+                const bk = BUCKLING_PCLS_ONLY_KEYS.concat(method === 'simp' ? BUCKLING_AL_KEYS : []).filter(k => k in o.buckling);
+                bk.forEach(k => delete o.buckling[k]);
+                dropped.push(...bk.map(k => 'buckling.' + k));
+            }
             if (dropped.length && warnList) {
                 warnList.push(`${jsonContent.optimisation_name || '(unnamed)'}: removed optimiser `
                     + `parameter(s) not used by the '${method}' method: ${dropped.join(', ')}`);
