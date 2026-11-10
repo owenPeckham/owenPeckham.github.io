@@ -315,6 +315,8 @@
                     <div><label>Num Cells Cutoff <span class="info-icon" data-tooltip="The number of grid cells large that a connected component has to be before it appears in the mesh.">[?]</span></label><input type="number" id="num_cutoff" value="10.0" data-req="true"></div>
                     <div><label>Voxel Size (mm) <span class="info-icon" data-tooltip="The side length of a single design voxel in millimetres. Sets the scale factor between the voxel grid and the FEA's metres, and so the physical size of the structure. The conformal backend previously hard-coded 1.0 and ignored this value.">[?]</span></label><input type="number" id="vox_size_conf" value="1.0" min="1e-6" data-req="true"></div>
                     <div><label>Max Cut-Step Halvings <span class="info-icon" data-tooltip="A step that cuts the load path, makes the meshing fail or gives a non-finite analysis is rejected and retaken with a smaller step. This is the maximum number of times the step is halved before the iteration gives up and keeps the previous design (docs/theory.md §5.8). Conformal-only: Regular and Conjugate Gradient never reject a step this way.">[?]</span></label><input type="number" id="cut_step_halvings" value="4" min="0" step="1" data-req="true"></div>
+                    <div><label>Material Interpolation <span class="info-icon" data-tooltip="material_interpolation (default on). Each tet takes the stiffness density of the design voxel it lies in, the same penalised interpolation c1 + (1 - c1) x^p the density backends use, so grey material above the level set is as weak here as in Regular / Conjugate Gradient (docs/theory.md §4.8, §7.1). Off meshes every tet with the full modulus, as before: grey material is then as stiff as solid and the design has no reason to become binary.">[?]</span></label><input type="checkbox" id="conf_material_interpolation" checked></div>
+                    <div><label>MC Vertex Clamp <span class="info-icon" data-tooltip="mc_vertex_clamp (default 0.1). Smallest distance, as a fraction of a voxel, between a marching-cubes vertex and the grid nodes at the ends of its edge (docs/theory.md §7.1). Without it a grid value within a hair of the level set gives sliver triangles, TetGen fills them with flat tets and the FE solve returns NaN. In [0, 0.5).">[?]</span></label><input type="number" id="conf_mc_vertex_clamp" value="0.1" min="0" max="0.499" step="0.05" data-req="true"></div>
                 </div>
             </div>
 
@@ -340,6 +342,23 @@
                     <div><label>Warm-start Max &rho; Change <span class="info-icon" data-tooltip="Cheap pre-solve filter. Solve cold instead of warm whenever the penalised stiffness density has changed, at its single most-changed voxel, by more than this since the field the stored displacement solved -- e.g. across an outer-iteration boundary when the penalisation power ramps up. In [0, 1].">[?]</span></label><input type="number" id="warm_start_max_rho_change" value="0.15" min="0" max="1" step="0.01" data-req="true"></div>
                     <div><label>Warm-start Probe Iters <span class="info-icon" data-tooltip="The real safeguard. After this many PCG iterations, check whether the warm-started residual has fallen enough (see Min. Reduction). If not, abandon it and restart from zero for the rest of the budget -- a bad warm start then costs at most this many wasted iterations, never a full extra solve.">[?]</span></label><input type="number" id="warm_start_probe_iters" value="8" min="1" step="1" data-req="true"></div>
                     <div><label>Warm-start Min. Reduction <span class="info-icon" data-tooltip="Fraction the residual must have fallen, relative to the warm start's own initial residual, by the probe iteration above. Below this the warm start is judged not to be helping and the solve restarts cold. In [0, 1).">[?]</span></label><input type="number" id="warm_start_min_reduction" value="0.5" min="0" max="0.99" step="0.05" data-req="true"></div>
+                    <div><label>Element Type <span class="info-icon" data-tooltip="element_type (default q1). 'q1': the trilinear hex as a precomputed 24x24 matrix. 'q1_gauss': the original 2x2x2 Gauss-point kernels (the default before 2026-10-22; select it to reproduce old runs). 'q1_im': the incompatible-modes hex (QM6), which removes shear locking of thin members in bending (docs/theory.md §13).">[?]</span></label><select id="cg_element_type"><option value="q1" selected>q1 (default)</option><option value="q1_gauss">q1_gauss (legacy)</option><option value="q1_im">q1_im (incompatible modes)</option></select></div>
+                    <div><label>Preconditioner <span class="info-icon" data-tooltip="preconditioner (default gmg). 'gmg': a geometric-multigrid V-cycle that cuts the CG iteration count by one to two orders of magnitude (docs/theory.md §14); on a grid too small to coarsen it falls back to block_jacobi by itself. 'block_jacobi': the earlier 3x3 nodal-block Jacobi. The multigrid settings are under 'Advanced solver'.">[?]</span></label><select id="cg_preconditioner"><option value="gmg" selected>GMG (default)</option><option value="block_jacobi">Block Jacobi</option></select></div>
+                    <div><label>Analysis Refinement <span class="info-icon" data-tooltip="analysis_refinement (default 1). Each design voxel is analysed as r^3 equal fine elements (r = 2 or 3), with loads and constraints replicated so total force and moment are preserved; sensitivities are those of the fine model. Buckling needs 1. About 8x the memory at 2 (27x at 3); capped by the device-memory model.">[?]</span></label><select id="cg_analysis_refinement"><option value="1" selected>1 (default)</option><option value="2">2</option><option value="3">3</option></select></div>
+                    <details id="cg_solver_advanced" style="grid-column: 1 / -1; margin-top: 4px;">
+                        <summary style="cursor:pointer; font-size:0.8rem; color:var(--text-muted);">Advanced solver (engines, multigrid)</summary>
+                        <div class="param-grid" style="margin-top:6px;">
+                            <div><label>Elastic Engine <span class="info-icon" data-tooltip="analysis.parameters.engine (default auto). 'auto' picks per machine: gpu_gmg on a CUDA GPU, the memory-lean gpu_gmg_lean on cards with at most 4 GB (e.g. MX550), cpu_direct (host sparse Cholesky) without CUDA. Explicit gpu_gmg / gpu_gmg_lean / gpu_block_jacobi / cpu_direct override the preconditioner accordingly; 'classic' uses exactly the settings on this panel. Every GPU engine falls back to a CPU one with a printed reason (run_info.json 'engines').">[?]</span></label><select id="cg_engine"><option value="auto" selected>auto (default)</option><option value="gpu_gmg">gpu_gmg</option><option value="gpu_gmg_lean">gpu_gmg_lean</option><option value="gpu_block_jacobi">gpu_block_jacobi</option><option value="cpu_direct">cpu_direct</option><option value="classic">classic</option></select></div>
+                            <div><label>PCG Engine <span class="info-icon" data-tooltip="pcg_engine (default auto). 'auto': JAX (float64 recursion, float32 V-cycle) when CUDA JAX is installed, the GPU has fast FP64 (V100, A100, H100, GH200) and the memory model fits; otherwise the numba 'fast' engine. Consumer cards (RTX, MX550) have weak FP64 and always get 'fast'. 'fast' needs preconditioner gmg and a q1/q1_im element, else the solve runs 'classic'. Set 'classic' for the original solver.">[?]</span></label><select id="cg_pcg_engine"><option value="auto" selected>auto (default)</option><option value="fast">fast</option><option value="classic">classic</option><option value="jax">jax</option></select></div>
+                            <div id="cg_gmg_fields" style="display:contents;">
+                                <div class="gmg-only"><label>GMG Levels <span class="info-icon" data-tooltip="gmg_levels. Total number of multigrid levels (>= 2). Blank (default) = automatic: coarsen until at most 'GMG Coarse Max Nodes' nodes remain.">[?]</span></label><input type="number" id="cg_gmg_levels" value="" min="2" step="1" placeholder="auto"></div>
+                                <div class="gmg-only"><label>GMG Smoother Steps <span class="info-icon" data-tooltip="gmg_smoother_steps (default 2). Chebyshev smoother degree, pre and post. Integer >= 1.">[?]</span></label><input type="number" id="cg_gmg_smoother_steps" value="2" min="1" step="1" data-req="true"></div>
+                                <div class="gmg-only"><label>GMG Coarse Max Nodes <span class="info-icon" data-tooltip="gmg_coarse_max_nodes (default 400). Node limit of the coarsest level when GMG Levels is automatic; the coarsest level is inverted densely.">[?]</span></label><input type="number" id="cg_gmg_coarse_max_nodes" value="400" min="1" step="1" data-req="true"></div>
+                                <div class="gmg-only"><label>GMG Reuse Max Rel. Change <span class="info-icon" data-tooltip="gmg_reuse_max_rel_change (default 0 = rebuild the hierarchy every solve). > 0 reuses the previous solve's coarse operators while max|E - E_prev| / max(E_prev) is at most this; the solution is the same to tolerance, only the iteration count may rise. Holds about 0.3-2 GB of device memory between solves.">[?]</span></label><input type="number" id="cg_gmg_reuse_max_rel_change" value="0.0" min="0" step="any" data-req="true"></div>
+                                <div class="gmg-only"><label>PCG Check Every <span class="info-icon" data-tooltip="pcg_check_every. Iterations between host reads of the fast engine's stopping flag. Blank (default) = adaptive. Does not change the result, only the number of wasted iterations.">[?]</span></label><input type="number" id="cg_pcg_check_every" value="" min="1" step="1" placeholder="adaptive"></div>
+                            </div>
+                        </div>
+                    </details>
                 </div>
             </div>
 
@@ -402,6 +421,8 @@
                 <h3 style="font-size:0.85rem; color:var(--text-muted); margin:12px 0 5px 0;">Run Cost</h3>
                 <div class="param-grid">
                     <div><label>Eigensolver Tol. <span class="info-icon" data-tooltip="Relative convergence tolerance of the ARPACK buckling eigensolve. 1e-12 (default) is about 21 % cheaper than machine precision (0) in back-substitutions. 1e-9 is about 39 % cheaper (22 % fewer than 1e-12) and showed no corrupted aggregate or sensitivity in about 300 test evaluations, but looser tolerances can miss a mode and 1e-6 did corrupt the sensitivity once in validation, so 1e-9 is an opt-in, not proven safe (theory.md section 6.10). Set 0 for machine precision (used by the finite-difference validation).">[?]</span></label><input type="number" id="buck_eig_tol" value="1e-12" step="any" min="0" data-req="true" data-buckling="true"></div>
+                    <div><label>Buckling Engine <span class="info-icon" data-tooltip="optimiser.buckling.engine (default auto): the eigensolver of the Conjugate Gradient backend. 'auto' takes the first engine the machine and the memory model allow: cuDSS (needs CuPy and nvmath-python; FP64 on fast-FP64 GPUs), then multigrid LOBPCG, then host Cholesky LOBPCG, then the classic ARPACK solver. Set 'cpu_cholesky_lobpcg' to force the CPU, 'classic' for the original solver. Applies to every method.">[?]</span></label><select id="buck_engine"><option value="auto" selected>auto (default)</option><option value="cudss64">cudss64</option><option value="cudss32">cudss32</option><option value="cudss64_hybrid">cudss64_hybrid</option><option value="cudss32_hybrid">cudss32_hybrid</option><option value="gmg_lobpcg32">gmg_lobpcg32</option><option value="cpu_cholesky_lobpcg">cpu_cholesky_lobpcg</option><option value="cpu_cholesky_eigsh">cpu_cholesky_eigsh</option><option value="cudss64_eigsh">cudss64_eigsh</option><option value="classic">classic</option></select></div>
+                    <div><label>LOBPCG Tol. <span class="info-icon" data-tooltip="optimiser.buckling.lobpcg_tol (default 1e-3): relative residual tolerance of the LOBPCG engines (not used by the ARPACK / eigsh engines, which take 'Eigensolver Tol.'). In (0, 1).">[?]</span></label><input type="number" id="buck_lobpcg_tol" value="1e-3" step="any" min="0" max="1" data-req="true" data-buckling="true"></div>
                     <div class="pcls-only"><label>Idle Evaluate Every <span class="info-icon" data-tooltip="While the constraint is idle (multiplier lambda3 and its modified value both zero, and the last critical load factor at least Idle Margin x the full safety factor), the eigensolve runs only every N inner iterations. Set to the same value as Evaluate Every, or lower, to disable the idle cadence.">[?]</span></label><input type="number" id="buck_idle_every" value="10" step="1" min="1" data-req="true" data-buckling="true"></div>
                     <div class="pcls-only"><label>Idle Margin <span class="info-icon" data-tooltip="Headroom that defines 'idle': the last critical load factor must be at least this multiple of the full safety factor. Must be at least 1.">[?]</span></label><input type="number" id="buck_idle_margin" value="1.1" step="0.05" min="1" data-req="true" data-buckling="true"></div>
                     <div class="pcls-only"><label>Idle Switch Tol. <span class="info-icon" data-tooltip="Idle cadence is interrupted and the eigensolve runs at once if the number of voxels that switched phase since the last evaluation exceeds this fraction of the design voxels.">[?]</span></label><input type="number" id="buck_idle_switch" value="1e-4" step="any" min="0" data-req="true" data-buckling="true"></div>
@@ -473,6 +494,10 @@
                     <div><label>MMA Asymptote Increase <span class="info-icon" data-tooltip="MMA: factor by which the asymptote distance grows for a variable that keeps moving the same way. > 1.">[?]</span></label><input type="number" id="simp_mma_asymptote_increase" value="1.2" min="1" step="0.05" data-req="true"></div>
                     <div><label>MMA Asymptote Decrease <span class="info-icon" data-tooltip="MMA: factor by which the asymptote distance shrinks for a variable that oscillates. (0, 1).">[?]</span></label><input type="number" id="simp_mma_asymptote_decrease" value="0.7" min="0" max="1" step="0.05" data-req="true"></div>
                     <div><label>MMA Constraint Penalty <span class="info-icon" data-tooltip="MMA: cost c of each constraint's elastic variable. A constraint multiplier (lambda3 in the output) that sits at this value means the constraint cannot be met. > 0.">[?]</span></label><input type="number" id="simp_mma_constraint_penalty" value="1000" min="0" step="100" data-req="true"></div>
+                    <div><label>Stopping Rule <span class="info-icon" data-tooltip="stopping_rule (default windowed). 'windowed' (docs/theory.md eq. 12.18): over the Settle Window the compliance change, the switch fraction and the mean design-variable change (Mean Change Tol.) are all small and the volume is met, or the compliance has plateaued (Plateau Iters / Plateau Tol.). 'max_change': the earlier rule, the largest change of a design variable below Change Tol.">[?]</span></label><select id="simp_stopping_rule"><option value="windowed" selected>Windowed (default)</option><option value="max_change">Max change (legacy)</option></select></div>
+                    <div><label>Mean Change Tol. <span class="info-icon" data-tooltip="mean_change_tolerance (default 1e-3): the windowed rule's bound on the mean absolute change of the design variables in one iteration. > 0.">[?]</span></label><input type="number" id="simp_mean_change_tolerance" value="1e-3" min="0" step="any" data-req="true"></div>
+                    <div><label>Plateau Iters <span class="info-icon" data-tooltip="plateau_iterations (default 200): the windowed rule also stops when the compliance has changed by less than Plateau Tol. (relative) over this many iterations. 0 = off. Integer >= 0.">[?]</span></label><input type="number" id="simp_plateau_iterations" value="200" min="0" step="1" data-req="true"></div>
+                    <div><label>Plateau Tol. <span class="info-icon" data-tooltip="plateau_tol (default 1e-3): relative compliance change over Plateau Iters below which the run has plateaued. >= 0.">[?]</span></label><input type="number" id="simp_plateau_tol" value="1e-3" min="0" step="any" data-req="true"></div>
                 </div>
             </div>
 
@@ -482,6 +507,10 @@
                     <div><label>Adaptive Front Step <span class="info-icon" data-tooltip="Shrink the front step (x0.7) when the boundary speed flips sign at a significant share of the front voxels (oscillation) or the augmented-Lagrangian merit rises, and let it grow back (x1.05, up to Front Step) otherwise. On by default; off = the fixed Front Step of earlier versions (docs/theory.md eq. 12.25).">[?]</span></label><input type="checkbox" id="levelset_adaptive_front_step" checked></div>
                     <div><label>Front Step Min <span class="info-icon" data-tooltip="Smallest front step the adaptive rule may reach, in voxels. (0, Front Step].">[?]</span></label><input type="number" id="levelset_front_step_min" value="0.02" min="0" max="1" step="0.01" data-req="true"></div>
                     <div><label>Oscillation Tol. <span class="info-icon" data-tooltip="Share of the front voxels whose speed flipped sign since the last iteration above which the front step is shrunk. (0, 1].">[?]</span></label><input type="number" id="levelset_oscillation_tol" value="0.15" min="0" max="1" step="0.05" data-req="true"></div>
+                    <div><label>Volume Schedule Step <span class="info-icon" data-tooltip="The volume constraint is taken against a target that moves from the initial volume towards the target volume by at most this fraction of the domain per iteration, so the boundary is asked only for the next small reduction. 0 = the target at once (earlier versions). >= 0.">[?]</span></label><input type="number" id="levelset_volume_schedule_step" value="0.005" min="0" step="0.001" data-req="true"></div>
+                    <div><label>Connectivity Guard <span class="info-icon" data-tooltip="Reject a boundary step that cuts a support from the load: halve the step and retry; if every retry still cuts it, release the volume pressure and take a growth-only step, which thickens the neck.">[?]</span></label><input type="checkbox" id="levelset_connectivity_guard" checked></div>
+                    <div><label>Connectivity Retries <span class="info-icon" data-tooltip="Number of times the Connectivity Guard halves a step before releasing the volume pressure. Integer >= 0.">[?]</span></label><input type="number" id="levelset_connectivity_retries" value="4" min="0" step="1" data-req="true"></div>
+                    <div><label>Remove Floating <span class="info-icon" data-tooltip="After each step, turn to void any solid piece that joins no load to a support and holds no preserve region (islands left where a thin member pinched off). Skipped while no piece joins a load to a support.">[?]</span></label><input type="checkbox" id="levelset_remove_floating" checked></div>
                     <div><label>CFL <span class="info-icon" data-tooltip="Largest boundary advance in one sub-step of the upwind transport, in voxels; the iteration takes ceil(Front Step / CFL) sub-steps. Below 1/sqrt(6) = 0.408 the scheme obeys a discrete minimum principle. (0, 0.4].">[?]</span></label><input type="number" id="levelset_cfl" value="0.4" min="0" max="0.4" step="0.05" data-req="true"></div>
                     <div><label>Reinit Every <span class="info-icon" data-tooltip="Re-initialise the level-set function to a signed distance every N iterations. 0 = never. Integer >= 0.">[?]</span></label><input type="number" id="levelset_reinit_every" value="5" min="0" step="1" data-req="true"></div>
                     <div><label>Reinit Method <span class="info-icon" data-tooltip="'Surface' (default): the exact distance to the triangulated zero level set, second-order accurate. 'Crossings': the distance to the nearest grid crossing of the boundary, as the browser demonstrator's twin does; it over-estimates the distance next to the boundary by up to about half a voxel.">[?]</span></label><select id="levelset_reinit_method"><option value="surface" selected>Surface</option><option value="crossings">Crossings (twin)</option></select></div>
@@ -504,6 +533,7 @@
                     <div><label>Buckling Normaliser <span class="info-icon" data-tooltip="Level set with the buckling constraint: the buckling speed is the density sensitivity divided by its mean magnitude, taken over the voxels next to the front (default) or over the domain voxels within half a voxel of it. Used only with buckling enabled (docs/theory.md eq. 12.43).">[?]</span></label><select id="levelset_buckling_normalisation"><option value="band" selected>Front band (default)</option><option value="domain">Domain</option></select></div>
                     <div><label>Buckling Speed Sampling <span class="info-icon" data-tooltip="Level set with the buckling constraint: how the buckling speed is read at the front, interpolated along the grid line like the compliance speed (default; a test found it removes more of the aggregate per unit of material moved) or taken at the solid-side voxel. Boundary motion only: there is no buckling topological derivative, so the level set cannot create holes for buckling (docs/theory.md section 12.6).">[?]</span></label><select id="levelset_buckling_speed_sampling"><option value="interpolate" selected>Interpolate (default)</option><option value="solid_side">Solid side</option></select></div>
                     <div><label>Buckling Fixed Penalties <span class="info-icon" data-tooltip="Level set with the buckling constraint: hold the penalties mu1 (volume) and mu3 (buckling) at their initial values instead of letting them decay to their floors. The decay makes the multiplier prediction act as a relay of gain 1/mu and made the load factor swing; held, the run settles smoothly. Off = the decay rule (the Mu3 Decay Fac. and Floor fields and the LS Mu1 Floor then apply). Has no effect without the buckling constraint.">[?]</span></label><input type="checkbox" id="levelset_buckling_fixed_penalties" checked></div>
+                    <div><label>Level-set Engine <span class="info-icon" data-tooltip="optimiser.levelset.engine (default auto): where the per-iteration grid steps run. 'auto': the numba-CUDA steps when a CUDA device is usable and the problem fits, else the CPU. 'gpu' asks for the GPU; 'classic' forces the CPU code. A GPU failure falls back to 'classic' with a printed line (run_info.json 'engines').">[?]</span></label><select id="levelset_engine"><option value="auto" selected>auto (default)</option><option value="gpu">gpu</option><option value="classic">classic (CPU)</option></select></div>
                 </div>
             </div>
 
@@ -514,22 +544,28 @@
                 <div><label>Out. Conv. Thr. <span class="info-icon" data-tooltip="Tolerance of the convergence (settled) test. The volume error |mean(rho) - V0| must be below it, as a fraction of the whole domain (1e-2 = one percentage point, the same units as 'Grey Tol.'); with buckling on, the true critical load factor must also be at least SF/(1 + tol).">[?]</span></label><input type="number" id="out_conv" value="1e-2" data-req="true"></div>
                 <div class="pcls-only"><label>In. Conv. Thr. <span class="info-icon" data-tooltip="Inner-loop stationarity: when the largest net driving force on any design voxel, max|dphi|/dt (in units of the mean stiffness driver), stays below this for 'Const. Iters Conv.' iterations, the inner loop exits early to update the multipliers. 1e-2 = no voxel is pushed by more than 1 % of the average compliance pull.">[?]</span></label><input type="number" id="in_conv" value="1e-2" data-req="true"></div>
                 <div><label>Target Volume <span class="info-icon" data-tooltip="Target volume fraction.">[?]</span></label><input type="number" id="target_vol" value="0.5" data-req="true"></div>
-                <div class="pcls-only"><label>Beta <span class="info-icon" data-tooltip="Total-variation (perimeter) regularisation weight. Larger values give smoother, fewer-holed boundaries. NOTE: the diffusivity used to be computed from an undivided central difference, which halved the effective beta; that is now fixed, so halve any beta tuned before this change to reproduce the old behaviour.">[?]</span></label><input type="number" id="beta" value="0.125" data-req="true"></div>
+                <div class="pcls-only"><label>Beta <span id="beta_unit_label">[mm]</span> <span class="info-icon" data-tooltip="Total-variation (perimeter) regularisation weight, in the unit set by 'Beta Units' (shown in brackets). Larger values give smoother, fewer-holed boundaries. NOTE: the diffusivity used to be computed from an undivided central difference, which halved the effective beta; that is now fixed, so halve any beta tuned before this change to reproduce the old behaviour.">[?]</span></label><input type="number" id="beta" value="0.125" data-req="true"></div>
+                <div class="pcls-only"><label>Beta Units <span class="info-icon" data-tooltip="beta_units (default mm since the study merge). The length unit of Beta and AOS Epsilon. 'mm': the TV step uses the physical voxel size as grid spacing, so the regularisation length stays the same when the voxel size changes (docs/theory.md §20). 'voxel': unit grid spacing, the behaviour before the merge. A Conformal analysis has no voxel grid for this, so the page writes 'voxel' for it (mm would be refused).">[?]</span></label><select id="beta_units"><option value="mm" selected>mm (default)</option><option value="voxel">voxel</option></select></div>
                 <div class="pcls-only"><label>dt (Time step) <span class="info-icon" data-tooltip="Time step size.">[?]</span></label><input type="number" id="dt" value="0.02" data-req="true"></div>
-                <div class="pcls-only"><label>AOS Epsilon <span class="info-icon" data-tooltip="Regularisation epsilon of the total-variation diffusivity D = 1/sqrt(|grad phi|^2 + epsilon^2) in the semi-implicit (AOS) step, in units of phi per voxel. The default 0.1 keeps the step stable and smooths the interface over about one voxel; much smaller values (1e-8, the pre-2026-10 default) make D blow up in flat regions of phi and give a stiffer, noisier step. > 0.">[?]</span></label><input type="number" id="aos_eps" value="0.1" step="any" min="0" data-req="true"></div>
+                <div class="pcls-only"><label>AOS Epsilon <span class="info-icon" data-tooltip="Regularisation epsilon of the total-variation diffusivity D = 1/sqrt(|grad phi|^2 + epsilon^2) in the semi-implicit (AOS) step, in units of (S - V) per voxel, or per mm with Beta Units = mm. Default 0.01 since the study merge (thin-member study: closer to exact TV, thinner members, about 3x the iterations of the previous default 0.1). Much smaller values (1e-8, the pre-2026-10 default) make D blow up in flat regions of phi and give a stiffer, noisier step. > 0.">[?]</span></label><input type="number" id="aos_eps" value="0.01" step="any" min="0" data-req="true"></div>
+                <div class="pcls-only"><label>TV Exterior <span class="info-icon" data-tooltip="tv_exterior (default neumann). The condition of the total-variation step at the faces of the design domain (docs/theory.md §23). 'void': the exterior is empty space, so a solid face on the domain boundary costs perimeter; use it for parts that end on domain faces (the shipped problem files do). 'neumann': zero flux, a face on the boundary costs nothing; use it on symmetry planes and deliberate cuts.">[?]</span></label><select id="tv_exterior"><option value="neumann" selected>neumann (default)</option><option value="void">void</option></select></div>
                 <div class="pcls-only"><label>Const. Iters Conv. <span class="info-icon" data-tooltip="Consecutive stationary iterations needed before the inner loop exits early.">[?]</span></label><input type="number" id="const_iters" value="3" data-req="true"></div>
                 <div><label>Save Frequency <span class="info-icon" data-tooltip="Saves 3D meshes and creates data folders only every Nth inner iteration.">[?]</span></label><input type="number" id="save_freq" value="10" min="1" data-req="true"></div>
                 <div><label>Random Seed <span class="info-icon" data-tooltip="Seed for the initial noisy phi field. Default 42, so runs are repeatable and comparable. Clear the field (blank = null in the JSON) to let the optimiser draw its own seed at run time; it is printed and saved in run_info.json either way, so any run can be repeated exactly by reading it back. Set this to reproduce a specific earlier run, e.g. via --set optimiser.random_seed=1234567.">[?]</span></label><input type="number" id="random_seed" value="42" step="1" placeholder="auto (random)"></div>
                 <div><label>Initial Design <span class="info-icon" data-tooltip="Start from a previous design instead of the method's own start: path of a .npz holding phi (a run's final_fields.npz or a history/phi_N.npz snapshot), a .npy of phi, or a run directory; relative to the working directory, else to the problem file. Must have this problem's grid; any method's result can seed any method. Blank = the method's own start (docs/theory.md section 8.1, eq. 8.1a). Not written to the JSON when blank.">[?]</span></label><input type="text" id="initial_design" value="" placeholder="none (default)"></div>
+                <div class="pcls-only"><label>Resume State <span class="info-icon" data-tooltip="resume_state. Restart a PCLS run WITH its optimiser state, not just the design (docs/theory.md §8.1, §25): path of a small .npz holding lambda1, mu1, mu2, penalisation_power, outer_iteration_offset and optionally lambda2 and phi (phi is used as the initial design when 'Initial Design' is blank). Relative to the working directory, else to the problem file. Blank (default) = none; not written to the JSON when blank.">[?]</span></label><input type="text" id="resume_state" value="" placeholder="none (default)"></div>
             </div>
 
             <h2 class="pcls-only">Constraints & Decay</h2>
             <div class="param-grid pcls-only">
-                <div><label>Mu1 Initial <span class="info-icon" data-tooltip="Initial value for mu1.">[?]</span></label><input type="number" id="mu1" value="0.2" data-req="true"></div>
+                <div><label>Mu1 Initial <span class="info-icon" data-tooltip="Initial penalty of the augmented-Lagrangian volume constraint. Blank (default since the study merge) = automatic: 5 x the explicit-step floor dt x (1 - void density)^2, divided by the target volume V0 when 'Volume Constraint Scale' is 'target' (the thin-member study's V4 setting, robust across its problems; the fixed default was 0.1 before). Not written to the JSON when blank.">[?]</span></label><input type="number" id="mu1" value="" min="0" step="any" placeholder="auto (5 x floor)"></div>
                 <div><label>Mu1 Decay Fac. <span class="info-icon" data-tooltip="Decay factor for mu1.">[?]</span></label><input type="number" id="mu1_decay" value="0.9" data-req="true"></div>
                 <div><label>Mu1 Floor <span class="info-icon" data-tooltip="Lower bound for the decay of mu1. Blank (default) = automatic: dt x (1 - void density)^2, the smallest value at which the explicit volume update cannot overshoot the target. Smaller values let the volume fraction oscillate and eventually flip between all-void and all-solid.">[?]</span></label><input type="number" id="mu1_floor" value="" min="0" placeholder="auto"></div>
                 <div><label>Mu2 Initial <span class="info-icon" data-tooltip="Initial value for mu2.">[?]</span></label><input type="number" id="mu2" value="5.0" data-req="true"></div>
                 <div><label>Mu2 Decay Fac. <span class="info-icon" data-tooltip="Decay factor for mu2.">[?]</span></label><input type="number" id="mu2_decay" value="0.7" data-req="true"></div>
+                <div><label>Mu2 Floor <span class="info-icon" data-tooltip="mu2_floor (default 0.5, the value that used to be hard-coded). Lower bound of mu2's decay; the effective floor is min(Mu2 Floor, Mu2 Initial). Small values make the piecewise-constant constraint exact but thin the film at the interface (docs/theory.md §21); below 0.5 the design oscillates. > 0.">[?]</span></label><input type="number" id="mu2_floor" value="0.5" min="0" step="any" data-req="true"></div>
+                <div><label>Volume Constraint Scale <span class="info-icon" data-tooltip="volume_constraint_scale (default domain). Units of the volume constraint in the multiplier updates (docs/theory.md §4.6a). 'domain': G1 = mean(rho) - V0, a fraction of the domain. 'target': G1 / V0, relative to the target volume (as SIMP's MMA uses), so Mu1 (and its floor) is in target units and means the same at every V0; the settled volume test then uses 'Volume Tol. (target)'. The shipped problem files set 'target'.">[?]</span></label><select id="volume_constraint_scale"><option value="domain" selected>domain (default)</option><option value="target">target</option></select></div>
+                <div><label>Volume Multiplier Units <span class="info-icon" data-tooltip="volume_multiplier_units (default physical since the study merge). The units in which lambda1 is held while the stiffness scale m changes (docs/theory.md §22). 'physical': lambda1 is rescaled by m_prev / m when m changes, so the price of volume stays fixed. 'normalised': the behaviour before the merge, in which a new m silently reprices volume.">[?]</span></label><select id="volume_multiplier_units"><option value="physical" selected>physical (default)</option><option value="normalised">normalised (legacy)</option></select></div>
                 <div><label>Lambda1 Clamp <span class="info-icon" data-tooltip="Symmetric anti-windup clamp on the volume multiplier lambda1. The stiffness driver is normalised to a mean magnitude of 1.0, so read this as 'how many times stronger than the average compliance pull may the volume constraint push'.">[?]</span></label><input type="number" id="lam1_clamp" value="5.0" min="0.01" data-req="true"></div>
                 <div><label>Lambda2 Clamp <span class="info-icon" data-tooltip="Symmetric anti-windup clamp on the piecewise-constant multiplier field lambda2, in the same units. lambda2 accumulates G2/mu2 every outer iteration while mu2 decays, so without a clamp a voxel that stays grey drives an unbounded piecewise term. Raise it if the field refuses to sharpen; lower it if phi oscillates between the phase values.">[?]</span></label><input type="number" id="lam2_clamp" value="5.0" min="0.01" data-req="true"></div>
             </div>
@@ -545,9 +581,14 @@
                 <div><label>Switch Tol. <span class="info-icon" data-tooltip="Maximum fraction of design voxels allowed to change phase (cross the level set) per iteration.">[?]</span></label><input type="number" id="conv_switch" value="1e-4" data-req="true"></div>
                 <div><label>Require Connected <span class="info-icon" data-tooltip="Also require the exported geometry to be connected: every loaded voxel joined to a support through solid with no void gap (voxels touching at a face, edge or corner count as joined), and at most 'Detached Tol.' of the solid volume outside such load paths. With the penalised interpolation designs are expected to be connected by the time they settle; this is the safety net.">[?]</span></label><input type="checkbox" id="conv_connected" checked></div>
                 <div><label>Detached Tol. <span class="info-icon" data-tooltip="Maximum fraction of the solid volume allowed in components that do not join a load to a support (floating members, dangling stubs).">[?]</span></label><input type="number" id="conv_detached" value="0.005" data-req="true"></div>
-                <div class="pcls-only"><label>Reconnect Resets <span class="info-icon" data-tooltip="If the design settles while disconnected, or settles connected but exports a volume outside 'Exported Vol. Tol.' of the target, the piecewise multiplier field lambda2 is cleared so the design can reconnect or release its void film, at most this many times in total (0 disables). The same budget serves the volume release of 'Freeze Release'. Once the resets are spent a settled, connected design that only fails the volume check is accepted as converged, with a warning.">[?]</span></label><input type="number" id="reconn_resets" value="3" min="0" data-req="true"></div>
+                <div class="pcls-only"><label>Reconnect Resets <span class="info-icon" data-tooltip="If the design settles while disconnected, or settles connected but exports a volume outside 'Exported Vol. Tol.' of the target, the piecewise multiplier field lambda2 is cleared so the design can reconnect or release its void film, at most this many times in total (0 disables). The same budget serves the volume release of 'Freeze Release'. Once the resets are spent a settled, connected design that only fails the volume check is accepted as converged, with a warning.">[?]</span></label><input type="number" id="reconn_resets" value="0" min="0" data-req="true"></div>
                 <div><label>Exported Vol. Tol. <span class="info-icon" data-tooltip="Also require the volume of the EXPORTED geometry (phi at or above the level set, plus preserve regions) to lie within this fraction of the target volume: the difference |V_exported - V0| must be at most tol x V0. A uniform void film can satisfy the volume constraint on the density field without being exported, so a design can settle while exporting well under V0. A failing design is released by a lambda2 reset (shares 'Reconnect Resets'). 0 or less disables the test. Default 0.15. See theory.md section 5.5.1.">[?]</span></label><input type="number" id="conv_exported" value="0.15" step="any" data-req="true"></div>
-                <div class="pcls-only"><label>Freeze Release <span class="info-icon" data-tooltip="Two releases for a design that has stopped moving. (1) FROZEN (every settled test except the volume error and the buckling target has held for 'Settle Window' iterations, no grey included) with the exported volume off target by more than 'Exported Vol. Tol.': the piecewise multiplier lambda2 is cleared at once (shares 'Reconnect Resets') instead of after the design has settled. (2) STALLED (the same without the grey test, since a design held under its buckling target keeps a fringe of grey voxels) while the buckling constraint is in force and Lambda_crit < SF/(1+outer tolerance): the inner loop ends early so the multipliers are updated, instead of waiting for the whole inner budget between updates of lambda3. It does not clear lambda2 and uses no reset budget. A design below its buckling safety factor is never accepted as converged. Unchecked restores the earlier behaviour (volume check only after the design has settled, no early outer step). See theory.md section 5.5.2.">[?]</span></label><input type="checkbox" id="freeze_reset" checked></div>
+                <div class="pcls-only"><label>Freeze Release <span class="info-icon" data-tooltip="Two releases for a design that has stopped moving. (1) FROZEN (every settled test except the volume error and the buckling target has held for 'Settle Window' iterations, no grey included) with the exported volume off target by more than 'Exported Vol. Tol.': the piecewise multiplier lambda2 is cleared at once (shares 'Reconnect Resets') instead of after the design has settled. (2) STALLED (the same without the grey test, since a design held under its buckling target keeps a fringe of grey voxels) while the buckling constraint is in force and Lambda_crit < SF/(1+outer tolerance): the inner loop ends early so the multipliers are updated, instead of waiting for the whole inner budget between updates of lambda3. It does not clear lambda2 and uses no reset budget. A design below its buckling safety factor is never accepted as converged. Unchecked (the default since the study merge) gives the plain behaviour: volume check only after the design has settled, no early outer step. See theory.md section 5.5.2.">[?]</span></label><input type="checkbox" id="freeze_reset"></div>
+                <div class="pcls-only"><label>Volume Tol. (target) <span class="info-icon" data-tooltip="convergence_volume_tol (default 0.02 = 2 % of V0). Tolerance of the settled volume test when 'Volume Constraint Scale' is 'target'; ignored with 'domain' (which uses Out. Conv. Thr.).">[?]</span></label><input type="number" id="conv_volume_tol" value="0.02" min="0" step="any" data-req="true"></div>
+                <div class="pcls-only"><label>Multiplier Tol. <span class="info-icon" data-tooltip="convergence_multiplier_tol (default 0.01). Multiplier stationarity in the settled test (docs/theory.md §5.5.3): the spread max - min of lambda1 + g1/mu1 over the Settle Window must not exceed this, in units of the normalised stiffness driver. 0 or less disables the test.">[?]</span></label><input type="number" id="conv_multiplier_tol" value="0.01" step="any" data-req="true"></div>
+                <div class="pcls-only"><label>Oscillation Amplitude Tol. <span class="info-icon" data-tooltip="convergence_oscillation_amplitude_tol (default 0.02). The compliance test also passes for a design that flips between two states every other iteration when the even and odd iterations are each stationary and the swing |c_n - c_(n-1)| / c_n is at most this. 0 or less = one-step test only.">[?]</span></label><input type="number" id="conv_osc_amp_tol" value="0.02" step="any" data-req="true"></div>
+                <div class="pcls-only"><label>Connectivity <span class="info-icon" data-tooltip="convergence_connectivity (default 26). 26: solid voxels touching at a face, edge or corner count as joined in the connectivity test; 6: face contact only (an edge or corner contact is a hinge in the Q1 mesh).">[?]</span></label><select id="conv_connectivity"><option value="26" selected>26 (default)</option><option value="6">6 (faces only)</option></select></div>
+                <div><label>Volume Mult. Reset Tol. <span class="info-icon" data-tooltip="volume_multiplier_reset_tol. Anti-windup reset of the volume multiplier lambda1: drop it when it has the opposite sign to G1 and |G1| exceeds this (G1 units). Blank = the Out. Conv. Thr. PCLS default 0 = off (the plain update of Wei & Wang 2009); the SIMP and level-set default is blank. The field follows the method's default when you switch method.">[?]</span></label><input type="number" id="vol_mult_reset_tol" value="0" min="0" step="any" placeholder="= Out. Conv. Thr."></div>
             </div>
 
             <h2 class="pcls-only">Penalised Stiffness (Continuation)</h2>
@@ -556,6 +597,10 @@
                 <div><label>Penalty Start <span class="info-icon" data-tooltip="First outer iteration with p > 1. The outer iterations before it run the plain linear interpolation so the topology can form.">[?]</span></label><input type="number" id="pen_start" value="2" min="0" data-req="true"></div>
                 <div><label>Penalty Ramp <span class="info-icon" data-tooltip="Outer iterations over which p rises linearly from 1 to its maximum.">[?]</span></label><input type="number" id="pen_ramp" value="5" min="1" data-req="true"></div>
                 <div><label>Stiffness Norm. <span class="info-icon" data-tooltip="Normalisation of the stiffness driver. 'winsorised': divide by the density-weighted fixed point m = sum(rho min(D, 10m))/sum(rho) over the design voxels, so the clipped driver has material-weighted mean exactly 1, a few extreme voxels cannot deflate it and the void of a low-volume design cannot inflate it. 'mean': the previous plain mean over all voxels.">[?]</span></label><select id="stiff_norm"><option value="winsorised" selected>Winsorised</option><option value="mean">Mean (legacy)</option></select></div>
+                <div><label>Stiffness Norm. Update <span class="info-icon" data-tooltip="stiffness_normalisation_update (default iteration). When the stiffness scale m is computed (docs/theory.md §4.5a). 'iteration': every iteration. 'outer': at the first inner iteration of each outer iteration, then held, so every inner loop descends one fixed augmented Lagrangian.">[?]</span></label><select id="stiff_norm_update"><option value="iteration" selected>iteration (default)</option><option value="outer">outer</option></select></div>
+                <div><label>Density Derivative <span class="info-icon" data-tooltip="consistent = exact derivative of the clipped density (default; fewer thin members). With the buckling constraint check convergence; Column_Buckling uses constant (E3 §3.1). constant = 1 - c1 everywhere, the volume term alone masked to the wells (the behaviour before the study merge). uniform = 1 - c1 everywhere in every term, unmasked (Wei & Wang eq. 23 as written). docs/theory.md §4.4a.">[?]</span></label><select id="density_derivative"><option value="consistent" selected>consistent (default)</option><option value="constant">constant</option><option value="uniform">uniform</option></select></div>
+                <div><label>Stiffness Interpolation <span class="info-icon" data-tooltip="stiffness_interpolation (default simp). 'simp': the power law c1 + (1 - c1) x^p. 'ramp': RAMP (Stolpe &amp; Svanberg 2001), whose positive slope at x = 0 lets material grow in void; its continuation parameter is q (RAMP q Max) instead of p. Not recommended (thin-member study: the void slope lifts the whole void), and RAMP always runs the host (CPU) update.">[?]</span></label><select id="stiffness_interpolation"><option value="simp" selected>simp (default)</option><option value="ramp">ramp (not recommended)</option></select></div>
+                <div id="ramp_q_wrap" style="display:none;"><label>RAMP q Max <span class="info-icon" data-tooltip="ramp_q_max (default 3.0): q reached at the end of the ramp, on the same outer schedule as p. q = 0 is the linear model. >= 0. Used only with Stiffness Interpolation = ramp.">[?]</span></label><input type="number" id="ramp_q_max" value="3.0" min="0" step="any" data-req="true"></div>
             </div>
 
             <h2>Field Values &amp; Clamps</h2>
@@ -574,6 +619,8 @@
             <div class="param-grid">
                 <div><label>History Every <span class="info-icon" data-tooltip="Saves phi (float16) to history/phi_<iteration>.npz every N outer iterations and at the end, for the evolution GIF and for re-running any diagnostic later.">[?]</span></label><input type="number" id="history_every" value="10" min="1" data-req="true"></div>
                 <div><label>Exported Analysis Every <span class="info-icon" data-tooltip="How often (every N outer iterations) the EXPORTED (thresholded) design's own compliance is computed and recorded in variables.csv, alongside the model compliance computed every iteration. Analysing the exported design costs a full extra solve, hence the throttle.">[?]</span></label><input type="number" id="exported_analysis_every" value="10" min="1" data-req="true"></div>
+                <div><label>Diagnostics Every <span class="info-icon" data-tooltip="diagnostics_every (default 1). Compute the per-iteration diagnostics (topology, connectivity, exported volume) only every N iterations; skipped iterations are blank in variables.csv, and the last iteration always gets them. Integer >= 1.">[?]</span></label><input type="number" id="diagnostics_every" value="1" min="1" step="1" data-req="true"></div>
+                <div><label>Update Engine <span class="info-icon" data-tooltip="optimiser.update_engine (default auto), for every method. 'auto': the GPU update and diagnostics (SIMP, PCLS) when numba finds a CUDA device and the memory model fits, else the CPU. 'gpu' asks for the GPU; 'cpu' and 'classic' are the host code, bit-exact with the regression guard. PCLS with RAMP always runs the host update.">[?]</span></label><select id="update_engine"><option value="auto" selected>auto (default)</option><option value="gpu">gpu</option><option value="cpu">cpu</option><option value="classic">classic</option></select></div>
                 <div><label>Run Post-processing <span class="info-icon" data-tooltip="Whether postprocess.py's statistics, figures and PDF report are generated automatically at the end of the run. Turn off to skip report/figure generation, e.g. for a quick parameter-sweep task where only variables.csv and run_info.json are needed; the report can still be generated later by running postprocess.py on the run directory.">[?]</span></label><input type="checkbox" id="run_postprocess" checked></div>
                 <div><label>Threshold Sweep Analyses <span class="info-icon" data-tooltip="Whether the final threshold-sweep step (threshold_sweep.csv) also re-analyses the design at each cut level to report its compliance and Lambda_crit, not just its volume, pieces, tunnels, cavities and connectivity. Analysing every level costs a full extra solve per level.">[?]</span></label><input type="checkbox" id="threshold_sweep_analyses" checked></div>
                 <div style="grid-column: 1 / -1;"><label>Threshold Sweep Levels <span class="info-icon" data-tooltip="Comma-separated phi cut levels the final design is re-thresholded at for threshold_sweep.csv, e.g. 0.1,0.2,...,0.9. Blank (default) = the optimiser's own default sweep, 0.1 through 0.9 in steps of 0.1.">[?]</span></label><input type="text" id="threshold_sweep_levels" value="" placeholder="auto (0.1 ... 0.9)"></div>
@@ -672,6 +719,15 @@
                 <li><strong>Mode count:</strong> use an <strong>even</strong> number. Buckling modes of symmetric structures come in degenerate pairs, and a mode set ending part-way through a pair has an ill-defined sensitivity.</li>
                 <li><strong>Cost:</strong> a buckling evaluation is roughly 10&ndash;30&times; a plain compliance iteration. Use <em>Evaluate Every</em> and <em>Activate After Outer</em> to control this.</li>
                 <li><strong style="color:#e8a33d;">Important:</strong> linear buckling assumes a geometrically perfect structure and ignores imperfections and post-buckling behaviour. Thin-walled results &mdash; exactly what topology optimisation tends to produce &mdash; are imperfection-sensitive and can fail below the linear prediction. Treat the achieved factor as an optimistic upper bound and verify the final geometry with a nonlinear analysis.</li>
+            </ul>
+
+            <h3>8. Solver &amp; Engines</h3>
+            <ul>
+                <li><strong>What <code>auto</code> picks:</strong> every engine field defaults to <em>auto</em>, which chooses per machine and records the choice in the run's <code>engines:</code> lines and <code>run_info.json</code>. On a CUDA GPU the elastic solve runs the multigrid PCG on the GPU (the memory-lean variant on cards with at most 4 GB), the PCG is the numba <em>fast</em> engine (JAX only on data-centre GPUs with fast FP64), and the optimiser update, level-set steps and buckling eigensolver run on the GPU when they fit. Without CUDA every engine resolves to its CPU version. A GPU engine that fails falls back to the CPU with a printed reason.</li>
+                <li><strong>Forcing the CPU:</strong> set <em>Update Engine</em> to <code>cpu</code>, <em>Elastic Engine</em> to <code>cpu_direct</code> (or <em>PCG Engine</em> to <code>classic</code>), <em>Level-set Engine</em> to <code>classic</code> and <em>Buckling Engine</em> to <code>cpu_cholesky_lobpcg</code>. The CPU update is bit-exact with the regression guard.</li>
+                <li><strong>Advanced solver:</strong> the engine fields and the multigrid settings sit in the collapsed <em>Advanced solver</em> group of the Conjugate Gradient panel; the multigrid fields appear only while the preconditioner is GMG. Element type, preconditioner and analysis refinement are the user-meaningful choices; leave the rest at their defaults.</li>
+                <li><strong>Windows laptops (e.g. MX550, 2 GB):</strong> a consumer GPU has weak FP64, so <code>auto</code> picks numba <em>fast</em> (never JAX) and the lean elastic engine. Only numba's CUDA target is needed; CuPy, nvmath-python and JAX are optional.</li>
+                <li><strong>Defaults in the file:</strong> a key from this group (and the other keys added by the study merge) is written to the JSON only when it differs from the library default, so files from this page carry no engine keys unless you set one.</li>
             </ul>
         </div>
     </div>
@@ -2286,7 +2342,10 @@
             'final_surface_num_cells_cutoff', 'final_surface_method', 'final_surface_alpha_voxels',
             'final_surface_offset_ratio', 'final_surface_min_component_fraction',
             'final_surface_smoothing_iterations', 'periodic_surface_method',
-            'periodic_surface_alpha_voxels', 'surface_export_background'
+            'periodic_surface_alpha_voxels', 'surface_export_background',
+            'volume_multiplier_reset_tol', 'diagnostics_every',
+            // Not an optimiser parameter: optimise.py takes it out for every method (gpu_analysis.configure_update).
+            'update_engine'
         ];
         // Buckling keys of the augmented-Lagrangian multiplier update: PCLS and the level set only.
         const BUCKLING_AL_KEYS = ['lambda3_initial', 'lambda3_clamp_max', 'mu3', 'mu3_decay_factor', 'mu3_floor', 'term_clamp'];
@@ -2311,13 +2370,23 @@
                 { key: 'mma_asymptote_init', label: 'MMA Asymptote Init', kind: 'float', def: 0.5, lo: 0, loOpen: true, hi: 1, hiOpen: true },
                 { key: 'mma_asymptote_increase', label: 'MMA Asymptote Increase', kind: 'float', def: 1.2, lo: 1, loOpen: true },
                 { key: 'mma_asymptote_decrease', label: 'MMA Asymptote Decrease', kind: 'float', def: 0.7, lo: 0, loOpen: true, hi: 1, hiOpen: true },
-                { key: 'mma_constraint_penalty', label: 'MMA Constraint Penalty', kind: 'float', def: 1000.0, lo: 0, loOpen: true }
+                { key: 'mma_constraint_penalty', label: 'MMA Constraint Penalty', kind: 'float', def: 1000.0, lo: 0, loOpen: true },
+                // `optional`: added after the first baseline files were written; exported only when not the default.
+                { key: 'stopping_rule', label: 'Stopping Rule', kind: 'select', def: 'windowed', optional: true,
+                  options: [ { value: 'windowed', label: 'Windowed (default)' }, { value: 'max_change', label: 'Max change (legacy)' } ] },
+                { key: 'mean_change_tolerance', label: 'Mean Change Tol.', kind: 'float', def: 1e-3, lo: 0, loOpen: true, optional: true },
+                { key: 'plateau_iterations', label: 'Plateau Iters', kind: 'int', def: 200, lo: 0, optional: true },
+                { key: 'plateau_tol', label: 'Plateau Tol.', kind: 'float', def: 1e-3, lo: 0, optional: true }
             ],
             levelset: [
                 { key: 'front_step', label: 'Front Step', kind: 'float', def: 0.5, lo: 0, loOpen: true, hi: 1 },
                 { key: 'adaptive_front_step', label: 'Adaptive Front Step', kind: 'bool', def: true },
                 { key: 'front_step_min', label: 'Front Step Min', kind: 'float', def: 0.02, lo: 0, loOpen: true, hi: 1 },
                 { key: 'oscillation_tol', label: 'Oscillation Tol.', kind: 'float', def: 0.15, lo: 0, loOpen: true, hi: 1 },
+                { key: 'volume_schedule_step', label: 'Volume Schedule Step', kind: 'float', def: 0.005, lo: 0 },
+                { key: 'connectivity_guard', label: 'Connectivity Guard', kind: 'bool', def: true },
+                { key: 'connectivity_retries', label: 'Connectivity Retries', kind: 'int', def: 4, lo: 0 },
+                { key: 'remove_floating', label: 'Remove Floating', kind: 'bool', def: true },
                 { key: 'cfl', label: 'CFL', kind: 'float', def: 0.4, lo: 0, loOpen: true, hi: 0.4 },
                 { key: 'reinit_every', label: 'Reinit Every', kind: 'int', def: 5, lo: 0 },
                 { key: 'reinit_method', label: 'Reinit Method', kind: 'select', def: 'surface',
@@ -2342,13 +2411,120 @@
                   options: [ { value: 'band', label: 'Front band (default)' }, { value: 'domain', label: 'Domain' } ] },
                 { key: 'buckling_speed_sampling', label: 'Buckling Speed Sampling', kind: 'select', def: 'interpolate',
                   options: [ { value: 'interpolate', label: 'Interpolate (default)' }, { value: 'solid_side', label: 'Solid side' } ] },
-                { key: 'buckling_fixed_penalties', label: 'Buckling Fixed Penalties', kind: 'bool', def: true }
+                { key: 'buckling_fixed_penalties', label: 'Buckling Fixed Penalties', kind: 'bool', def: true },
+                { key: 'engine', label: 'Level-set Engine', kind: 'select', def: 'auto', optional: true,
+                  options: [ { value: 'auto', label: 'auto (default)' }, { value: 'gpu', label: 'gpu' }, { value: 'classic', label: 'classic (CPU)' } ] }
             ]
         };
         const methodParamEl = (method, prm) => document.getElementById(`${method}_${prm.key}`);
 
-        // The method's block as written to the JSON.
-        function readMethodBlock(method) {
+        // Keys added by the study merge (docs/PLAN_study_merge.md §6, §6.1) outside the method
+        // blocks. Each control's default is the library default, and a key is written to the
+        // file only when it differs from that default, so a file from the page omits the
+        // engine keys and older problem files keep round-tripping unchanged. `block`: where
+        // the key lives -- 'cg' / 'conf' (analysis.parameters of that backend), 'optimiser',
+        // 'buckling' (optimiser.buckling). `defByMethod`: a default that differs per method.
+        // `num` on a select: its values are numbers. Read by serializeState,
+        // deserializeState and the Batch Edit table below.
+        const opts = (...v) => v.map(x => ({ value: String(x), label: String(x) }));
+        const STUDY_KEYS = [
+            { id: 'cg_element_type', block: 'cg', key: 'element_type', label: 'Element Type', kind: 'select', def: 'q1', options: opts('q1', 'q1_gauss', 'q1_im') },
+            { id: 'cg_preconditioner', block: 'cg', key: 'preconditioner', label: 'Preconditioner', kind: 'select', def: 'gmg', options: opts('gmg', 'block_jacobi') },
+            { id: 'cg_analysis_refinement', block: 'cg', key: 'analysis_refinement', label: 'Analysis Refinement', kind: 'int', def: 1 },
+            { id: 'cg_engine', block: 'cg', key: 'engine', label: 'Elastic Engine', kind: 'select', def: 'auto',
+              options: opts('auto', 'gpu_gmg', 'gpu_gmg_lean', 'gpu_block_jacobi', 'cpu_direct', 'classic') },
+            { id: 'cg_pcg_engine', block: 'cg', key: 'pcg_engine', label: 'PCG Engine', kind: 'select', def: 'auto', options: opts('auto', 'fast', 'classic', 'jax') },
+            { id: 'cg_gmg_levels', block: 'cg', key: 'gmg_levels', label: 'GMG Levels (blank=auto)', kind: 'int', def: null, nullable: true },
+            { id: 'cg_gmg_smoother_steps', block: 'cg', key: 'gmg_smoother_steps', label: 'GMG Smoother Steps', kind: 'int', def: 2 },
+            { id: 'cg_gmg_coarse_max_nodes', block: 'cg', key: 'gmg_coarse_max_nodes', label: 'GMG Coarse Max Nodes', kind: 'int', def: 400 },
+            { id: 'cg_gmg_reuse_max_rel_change', block: 'cg', key: 'gmg_reuse_max_rel_change', label: 'GMG Reuse Max Rel. Change', kind: 'float', def: 0.0 },
+            { id: 'cg_pcg_check_every', block: 'cg', key: 'pcg_check_every', label: 'PCG Check Every (blank=adaptive)', kind: 'int', def: null, nullable: true },
+            { id: 'conf_material_interpolation', block: 'conf', key: 'material_interpolation', label: 'Material Interpolation', kind: 'bool', def: true },
+            { id: 'conf_mc_vertex_clamp', block: 'conf', key: 'mc_vertex_clamp', label: 'MC Vertex Clamp', kind: 'float', def: 0.1 },
+            { id: 'buck_engine', block: 'buckling', key: 'engine', label: 'Buckling Engine', kind: 'select', def: 'auto',
+              options: opts('auto', 'cudss64', 'cudss32', 'cudss64_hybrid', 'cudss32_hybrid', 'gmg_lobpcg32',
+                            'cpu_cholesky_lobpcg', 'cpu_cholesky_eigsh', 'cudss64_eigsh', 'classic') },
+            { id: 'buck_lobpcg_tol', block: 'buckling', key: 'lobpcg_tol', label: 'LOBPCG Tol.', kind: 'float', def: 1e-3 },
+            { id: 'update_engine', block: 'optimiser', key: 'update_engine', label: 'Update Engine', kind: 'select', def: 'auto', options: opts('auto', 'gpu', 'cpu', 'classic') },
+            { id: 'diagnostics_every', block: 'optimiser', key: 'diagnostics_every', label: 'Diagnostics Every', kind: 'int', def: 1 },
+            { id: 'vol_mult_reset_tol', block: 'optimiser', key: 'volume_multiplier_reset_tol', label: 'Volume Mult. Reset Tol.', kind: 'float',
+              nullable: true, defByMethod: { pcls: 0.0, simp: null, levelset: null } },
+            { id: 'beta_units', block: 'optimiser', key: 'beta_units', label: 'Beta Units', kind: 'select', def: 'mm', options: opts('mm', 'voxel') },
+            { id: 'tv_exterior', block: 'optimiser', key: 'tv_exterior', label: 'TV Exterior', kind: 'select', def: 'neumann', options: opts('neumann', 'void') },
+            { id: 'resume_state', block: 'optimiser', key: 'resume_state', label: 'Resume State', kind: 'text', def: null, nullable: true },
+            { id: 'mu2_floor', block: 'optimiser', key: 'mu2_floor', label: 'Mu2 Floor', kind: 'float', def: 0.5 },
+            { id: 'volume_constraint_scale', block: 'optimiser', key: 'volume_constraint_scale', label: 'Volume Constraint Scale', kind: 'select', def: 'domain', options: opts('domain', 'target') },
+            { id: 'volume_multiplier_units', block: 'optimiser', key: 'volume_multiplier_units', label: 'Volume Multiplier Units', kind: 'select', def: 'physical', options: opts('physical', 'normalised') },
+            { id: 'conv_volume_tol', block: 'optimiser', key: 'convergence_volume_tol', label: 'Volume Tol. (target)', kind: 'float', def: 0.02 },
+            { id: 'conv_multiplier_tol', block: 'optimiser', key: 'convergence_multiplier_tol', label: 'Multiplier Tol.', kind: 'float', def: 0.01 },
+            { id: 'conv_osc_amp_tol', block: 'optimiser', key: 'convergence_oscillation_amplitude_tol', label: 'Oscillation Amplitude Tol.', kind: 'float', def: 0.02 },
+            { id: 'conv_connectivity', block: 'optimiser', key: 'convergence_connectivity', label: 'Connectivity', kind: 'int', def: 26 },
+            { id: 'stiff_norm_update', block: 'optimiser', key: 'stiffness_normalisation_update', label: 'Stiffness Norm. Update', kind: 'select', def: 'iteration', options: opts('iteration', 'outer') },
+            { id: 'density_derivative', block: 'optimiser', key: 'density_derivative', label: 'Density Derivative', kind: 'select', def: 'consistent', options: opts('consistent', 'constant', 'uniform') },
+            { id: 'stiffness_interpolation', block: 'optimiser', key: 'stiffness_interpolation', label: 'Stiffness Interpolation', kind: 'select', def: 'simp', options: opts('simp', 'ramp') },
+            { id: 'ramp_q_max', block: 'optimiser', key: 'ramp_q_max', label: 'RAMP q Max', kind: 'float', def: 3.0 }
+        ];
+        const studyDefault = (k, method) => k.defByMethod ? k.defByMethod[method || 'pcls'] : k.def;
+        function studyIsDefault(v, d) {
+            if (d === null) return v === null;
+            if (typeof d === 'number') return typeof v === 'number' && Math.abs(v - d) <= 1e-12 * Math.max(1, Math.abs(d));
+            return v === d;
+        }
+        function readStudyKey(k) {
+            const el = document.getElementById(k.id);
+            if (k.kind === 'bool') return el.checked;
+            const raw = String(el.value).trim();
+            if (raw === '' && k.nullable) return null;
+            if (k.kind === 'int') return parseInt(raw);
+            if (k.kind === 'float') return parseFloat(raw);
+            return raw;
+        }
+        function writeStudyKey(k, v) {
+            const el = document.getElementById(k.id);
+            if (k.kind === 'bool') el.checked = !!v;
+            else el.value = (v === null || v === undefined) ? '' : v;
+            if (k.id === 'beta_units') { el.dataset.userValue = el.value; refreshStudyFields(); }
+        }
+        // The block's keys that differ from the library default, for the export.
+        function studyBlock(block, method) {
+            const out = {};
+            STUDY_KEYS.filter(k => k.block === block).forEach(k => {
+                const v = readStudyKey(k);
+                if (!studyIsDefault(v, studyDefault(k, method))) out[k.key] = v;
+            });
+            return out;
+        }
+        // The file's values, or the library default for a key the file does not set.
+        function loadStudyBlock(block, src, method) {
+            STUDY_KEYS.filter(k => k.block === block).forEach(k => {
+                writeStudyKey(k, (src && src[k.key] !== undefined) ? src[k.key] : studyDefault(k, method));
+            });
+        }
+
+        // Dependent visibility of the solver and PCLS fields (docs/PLAN_study_merge.md §6 (iv)):
+        // the multigrid fields only for preconditioner = gmg, RAMP q only for RAMP, and the unit
+        // of beta. A Conformal analysis has no voxel grid for beta in mm (the optimiser refuses
+        // it), so beta_units is held at 'voxel' there.
+        function refreshStudyFields() {
+            const gmg = document.getElementById('cg_preconditioner').value === 'gmg';
+            document.querySelectorAll('#cg_gmg_fields .gmg-only').forEach(el => el.style.display = gmg ? '' : 'none');
+            document.getElementById('ramp_q_wrap').style.display =
+                document.getElementById('stiffness_interpolation').value === 'ramp' ? '' : 'none';
+            // The user's (or the file's) choice is kept in data-user-value, so leaving Conformal restores it.
+            const bu = document.getElementById('beta_units');
+            const conf = document.getElementById('analysisType').value === 'conf';
+            bu.value = conf ? 'voxel' : (bu.dataset.userValue || 'mm');
+            bu.disabled = conf;
+            document.getElementById('beta_unit_label').textContent = bu.value === 'mm' ? '[mm]' : '[voxels]';
+        }
+        document.getElementById('beta_units').addEventListener('change', e => { e.target.dataset.userValue = e.target.value; });
+        ['cg_preconditioner', 'stiffness_interpolation', 'beta_units', 'analysisType'].forEach(id =>
+            document.getElementById(id).addEventListener('change', refreshStudyFields));
+        refreshStudyFields();
+
+        // The method's block as written to the JSON (pruneOptional: leave out the `optional`
+        // keys at their default, as the export does; validation reads every key).
+        function readMethodBlock(method, pruneOptional = false) {
             const block = {};
             METHOD_PARAMS[method].forEach(prm => {
                 const el = methodParamEl(method, prm);
@@ -2360,6 +2536,7 @@
                     if (raw === '' && prm.nullable) v = null;
                     else v = (prm.kind === 'int') ? parseInt(raw) : parseFloat(raw);
                 }
+                if (pruneOptional && prm.optional && studyIsDefault(v, prm.def)) return;
                 block[prm.key] = v;
             });
             return block;
@@ -2391,14 +2568,23 @@
                 BUCKLING_PCLS_ONLY_KEYS.forEach(k => { delete out.buckling[k]; });
                 if (method === 'simp') BUCKLING_AL_KEYS.forEach(k => { delete out.buckling[k]; });
             }
-            out[method] = readMethodBlock(method);
+            out[method] = readMethodBlock(method, true);
             return out;
         }
 
         // Shows the selected method's panel, hides the PCLS-only fields for a
         // baseline (their values are kept, so switching back loses nothing).
+        // volume_multiplier_reset_tol has a different default for PCLS (0 = off) and the
+        // baselines (null): a field left at the previous method's default moves to the new one.
+        let lastOptMethod = 'pcls';
         function refreshMethodPanels() {
             const method = document.getElementById('optMethod').value;
+            if (method !== lastOptMethod) {
+                STUDY_KEYS.filter(k => k.defByMethod).forEach(k => {
+                    if (studyIsDefault(readStudyKey(k), studyDefault(k, lastOptMethod))) writeStudyKey(k, studyDefault(k, method));
+                });
+                lastOptMethod = method;
+            }
             document.querySelectorAll('.method-subpanel').forEach(p => p.style.display = 'none');
             const panel = document.getElementById(`panel_method_${method}`);
             if (panel) panel.style.display = 'block';
@@ -3273,7 +3459,9 @@
                 idle_margin: num('buck_idle_margin'),
                 idle_switch_tol: num('buck_idle_switch'),
                 settle_requires_full_ramp: document.getElementById('buck_settle_full').checked,
-                report_exported: document.getElementById('buck_report_exported').checked
+                report_exported: document.getElementById('buck_report_exported').checked,
+                // Eigensolver engine (gpu_analysis.py): written only when not the default.
+                ...studyBlock('buckling')
             };
         }
 
@@ -3286,7 +3474,8 @@
                     offset_proportion: parseFloat(document.getElementById('offset_prop').value),
                     max_mesh_characteristic_length: parseFloat(document.getElementById('max_char').value),
                     num_cells_cutoff: parseFloat(document.getElementById('num_cutoff').value),
-                    voxel_size_mm: parseFloat(document.getElementById('vox_size_conf').value)
+                    voxel_size_mm: parseFloat(document.getElementById('vox_size_conf').value),
+                    ...studyBlock('conf')
                 };
             } else if (analysisType === 'reg') {
                 analysisParams = { voxel_size_mm: parseFloat(document.getElementById('vox_size_reg').value) };
@@ -3299,7 +3488,9 @@
                     warm_start_cg: document.getElementById('warm_start_cg').checked,
                     warm_start_max_rho_change: parseFloat(document.getElementById('warm_start_max_rho_change').value),
                     warm_start_probe_iters: parseInt(document.getElementById('warm_start_probe_iters').value),
-                    warm_start_min_reduction: parseFloat(document.getElementById('warm_start_min_reduction').value)
+                    warm_start_min_reduction: parseFloat(document.getElementById('warm_start_min_reduction').value),
+                    // Solver and engine keys (docs/PLAN_study_merge.md §6.1): written only when not the default.
+                    ...studyBlock('cg')
                 };
             }
 
@@ -3324,7 +3515,9 @@
                     target_volume: parseFloat(document.getElementById('target_vol').value),
                     beta: parseFloat(document.getElementById('beta').value),
                     void_density: parseFloat(document.getElementById('void_dens').value),
-                    mu1: parseFloat(document.getElementById('mu1').value),
+                    // Blank = null in the library (5 x the explicit-step floor), so the key is left out.
+                    ...(Number.isFinite(parseFloat(document.getElementById('mu1').value))
+                        ? { mu1: parseFloat(document.getElementById('mu1').value) } : {}),
                     mu2: parseFloat(document.getElementById('mu2').value),
                     mu1_decay_factor: parseFloat(document.getElementById('mu1_decay').value),
                     mu2_decay_factor: parseFloat(document.getElementById('mu2_decay').value),
@@ -3416,6 +3609,9 @@
                     periodic_surface_method: document.getElementById('periodic_method').value,
                     periodic_surface_alpha_voxels: parseFloat(document.getElementById('periodic_alpha_vox').value),
                     surface_export_background: document.getElementById('surface_bg').checked,
+                    // Keys of the study merge (docs/PLAN_study_merge.md §6.1): written only when not
+                    // the library default of the selected method.
+                    ...studyBlock('optimiser', document.getElementById('optMethod').value),
                     // Nested block, matching ProblemParser.BUCKLING_KEY_MAP. Always
                     // emitted (with enabled:false when off) so that batch edits and
                     // sweeps have a stable path to target.
@@ -3512,6 +3708,10 @@
                     if (params.warm_start_probe_iters !== undefined) document.getElementById('warm_start_probe_iters').value = params.warm_start_probe_iters;
                     if (params.warm_start_min_reduction !== undefined) document.getElementById('warm_start_min_reduction').value = params.warm_start_min_reduction;
                 }
+                // Solver / engine keys of the file's backend; absent keys (and the other backend's) = the library default.
+                const atype = document.getElementById('analysisType').value;
+                loadStudyBlock('cg', atype === 'cg' ? params : null);
+                loadStudyBlock('conf', atype === 'conf' ? params : null);
             }
             if (data.optimiser) {
                 const o = data.optimiser;
@@ -3527,11 +3727,14 @@
                     'conv_grey': 'convergence_grey_tol', 'conv_comp': 'convergence_compliance_tol',
                     'conv_switch': 'convergence_switch_tol', 'conv_detached': 'convergence_detached_tol',
                     'reconn_resets': 'reconnection_max_resets', 'conv_exported': 'convergence_exported_volume_tol' };
-                // Absent = the optimiser's default 0.1 (files written before the key existed).
-                document.getElementById('aos_eps').value = (o.aos_epsilon !== undefined && o.aos_epsilon !== null) ? o.aos_epsilon : 0.1;
+                // Absent = the optimiser's default 0.01 (since the study merge; files written before the key existed).
+                document.getElementById('aos_eps').value = (o.aos_epsilon !== undefined && o.aos_epsilon !== null) ? o.aos_epsilon : 0.01;
                 for (const [id, key] of Object.entries(newOptMap)) { if (o[key] !== undefined && o[key] !== null) document.getElementById(id).value = o[key]; }
+                // Defaults changed by the study merge: an absent key means the new library default.
+                document.getElementById('reconn_resets').value = (o.reconnection_max_resets !== undefined && o.reconnection_max_resets !== null) ? o.reconnection_max_resets : 0;
+                document.getElementById('mu1').value = (o.mu1 === undefined || o.mu1 === null) ? '' : o.mu1;
                 if (o.convergence_require_connected !== undefined) document.getElementById('conv_connected').checked = !!o.convergence_require_connected;
-                if (o.freeze_reset_enabled !== undefined) document.getElementById('freeze_reset').checked = !!o.freeze_reset_enabled;
+                document.getElementById('freeze_reset').checked = (o.freeze_reset_enabled !== undefined) ? !!o.freeze_reset_enabled : false;
                 if (o.run_until_converged !== undefined) document.getElementById('run_until_conv').checked = !!o.run_until_converged;
                 if (o.time_limit_hours !== undefined) document.getElementById('time_limit_h').value = (o.time_limit_hours === null ? '' : o.time_limit_hours);
                 if (o.mu1_floor !== undefined) document.getElementById('mu1_floor').value = (o.mu1_floor === null ? '' : o.mu1_floor);
@@ -3616,6 +3819,12 @@
                 if (OPTIMISER_METHODS.includes(method)) document.getElementById('optMethod').value = method;
                 else console.warn(`Unknown optimiser.method '${method}' in the file; the form shows PCLS.`);
                 ['simp', 'levelset'].forEach(m => writeMethodBlock(m, (o[m] && typeof o[m] === 'object') ? o[m] : null));
+                // Keys of the study merge: the file's values, else the library default of the file's method.
+                const shownMethod = document.getElementById('optMethod').value;
+                loadStudyBlock('optimiser', o, shownMethod);
+                loadStudyBlock('buckling', (b && typeof b === 'object') ? b : null);
+                lastOptMethod = shownMethod;
+                refreshStudyFields();
                 refreshMethodPanels();
                 refreshBucklingPanel();
             }
@@ -4049,6 +4258,21 @@
         saveState();
 
         // Full comprehensive list of Analysis and Optimiser parameters
+        // Batch Edit rows of the study-merge keys (STUDY_KEYS), with the library defaults (PCLS's for a
+        // per-method default). A blank nullable value writes null, i.e. the library default.
+        function studyBatchRows(block) {
+            const base = { cg: ['analysis', 'parameters'], conf: ['analysis', 'parameters'],
+                           optimiser: ['optimiser'], buckling: ['optimiser', 'buckling'] }[block];
+            return STUDY_KEYS.filter(k => k.block === block).map(k => {
+                const d = studyDefault(k, 'pcls');
+                return {
+                    id: `ep_${k.id}`, path: base.concat([k.key]), label: k.label,
+                    type: k.kind === 'bool' ? 'bool' : (k.kind === 'select' ? 'select' : (k.kind === 'text' ? 'text' : 'number')),
+                    default: (d === null) ? '' : d, nullable: !!k.nullable,
+                    ...(k.options ? { options: k.options } : {})
+                };
+            });
+        }
         const exportParams = [
             { header: 'General' },
             { id: 'ep_on', path: ['optimisation_name'], label: 'Optimisation Name', type: 'text', default: 'PCLS_Optimisation' },
@@ -4083,6 +4307,8 @@
             { id: 'ep_pi', path: ['analysis', 'parameters', 'pcg_max_iters'], label: 'PCG Max Iters', type: 'number', default: 10000 },
             { id: 'ep_pt', path: ['analysis', 'parameters', 'pcg_tol'], label: 'PCG Abs. Tol.', type: 'number', default: 1e-3 },
             { id: 'ep_prt', path: ['analysis', 'parameters', 'pcg_rel_tol'], label: 'PCG Rel. Tol.', type: 'number', default: 1e-6 },
+            ...studyBatchRows('cg'),
+            ...studyBatchRows('conf'),
 
             { header: 'Optimiser' },
             { id: 'ep_oi', path: ['optimiser', 'outer_loop_max_iters'], label: 'Out. Max Iters', type: 'number', default: 25 },
@@ -4092,14 +4318,15 @@
             { id: 'ep_tv', path: ['optimiser', 'target_volume'], label: 'Target Volume', type: 'number', default: 0.5 },
             { id: 'ep_bt', path: ['optimiser', 'beta'], label: 'Beta', type: 'number', default: 0.125 },
             { id: 'ep_dt', path: ['optimiser', 'dt'], label: 'dt (Time step)', type: 'number', default: 0.02 },
-            { id: 'ep_aos', path: ['optimiser', 'aos_epsilon'], label: 'AOS Epsilon', type: 'number', default: 0.1 },
+            { id: 'ep_aos', path: ['optimiser', 'aos_epsilon'], label: 'AOS Epsilon', type: 'number', default: 0.01 },
             { id: 'ep_ci', path: ['optimiser', 'constant_iters_for_convergence'], label: 'Const. Iters', type: 'number', default: 3 },
             { id: 'ep_sf', path: ['optimiser', 'save_frequency'], label: 'Save Freq.', type: 'number', default: 10 },
             // Default 42. (A batch value is written as a number, so 0 is the seed 0, not
             // 'random'; use the single-problem editor's blank field for null.)
             { id: 'ep_seed', path: ['optimiser', 'random_seed'], label: 'Random Seed', type: 'number', default: 42 },
             { id: 'ep_initdesign', path: ['optimiser', 'initial_design'], label: 'Initial Design', type: 'text', default: '' },
-            { id: 'ep_m1', path: ['optimiser', 'mu1'], label: 'Mu1 Initial', type: 'number', default: 0.2 },
+            // Blank = null: 5 x the explicit-step floor (the library default since the study merge).
+            { id: 'ep_m1', path: ['optimiser', 'mu1'], label: 'Mu1 Initial (blank=auto)', type: 'number', default: '', nullable: true },
             { id: 'ep_m1d', path: ['optimiser', 'mu1_decay_factor'], label: 'Mu1 Decay Fac.', type: 'number', default: 0.9 },
             // 0 = automatic (the optimiser treats a non-positive floor as dt*(1-void_density)^2).
             { id: 'ep_m1f', path: ['optimiser', 'mu1_floor'], label: 'Mu1 Floor (0=auto)', type: 'number', default: 0 },
@@ -4127,13 +4354,14 @@
             { id: 'ep_cswitch', path: ['optimiser', 'convergence_switch_tol'], label: 'Switch Tol.', type: 'number', default: 1e-4 },
             { id: 'ep_cconn', path: ['optimiser', 'convergence_require_connected'], label: 'Require Connected', type: 'bool', default: true },
             { id: 'ep_cdet', path: ['optimiser', 'convergence_detached_tol'], label: 'Detached Tol.', type: 'number', default: 0.005 },
-            { id: 'ep_reconn', path: ['optimiser', 'reconnection_max_resets'], label: 'Reconnect Resets', type: 'number', default: 3 },
+            { id: 'ep_reconn', path: ['optimiser', 'reconnection_max_resets'], label: 'Reconnect Resets', type: 'number', default: 0 },
             { id: 'ep_cexp', path: ['optimiser', 'convergence_exported_volume_tol'], label: 'Exported Vol. Tol.', type: 'number', default: 0.15 },
-            { id: 'ep_freeze', path: ['optimiser', 'freeze_reset_enabled'], label: 'Freeze Release', type: 'bool', default: true },
+            { id: 'ep_freeze', path: ['optimiser', 'freeze_reset_enabled'], label: 'Freeze Release', type: 'bool', default: false },
             { id: 'ep_rtc', path: ['optimiser', 'run_until_converged'], label: 'Run Until Converged', type: 'bool', default: false },
             // 0 = no limit (the optimiser treats a non-positive time limit as none).
             { id: 'ep_tlim', path: ['optimiser', 'time_limit_hours'], label: 'Time Limit (h, 0=none)', type: 'number', default: 0 },
             { id: 'ep_cuthalve', path: ['optimiser', 'cut_step_max_halvings'], label: 'Max Cut-Step Halvings', type: 'number', default: 4 },
+            ...studyBatchRows('optimiser'),
 
             // Optimiser method and the baselines' own parameters (docs/theory.md §8.15).
             // Writing 'pcls' removes the key again (pruneMethodParameters), so a PCLS
@@ -4208,7 +4436,8 @@
             { id: 'ep_bk_ide',   path: ['optimiser', 'buckling', 'idle_evaluate_every'], label: 'Idle Evaluate Every (PCLS)', type: 'number', default: 10 },
             { id: 'ep_bk_idm',   path: ['optimiser', 'buckling', 'idle_margin'], label: 'Idle Margin (PCLS)', type: 'number', default: 1.1 },
             { id: 'ep_bk_ids',   path: ['optimiser', 'buckling', 'idle_switch_tol'], label: 'Idle Switch Tol. (PCLS)', type: 'number', default: 1e-4 },
-            { id: 'ep_bk_stf',   path: ['optimiser', 'buckling', 'settle_requires_full_ramp'], label: 'Settle Needs Full Ramp (PCLS)', type: 'bool', default: false }
+            { id: 'ep_bk_stf',   path: ['optimiser', 'buckling', 'settle_requires_full_ramp'], label: 'Settle Needs Full Ramp (PCLS)', type: 'bool', default: false },
+            ...studyBatchRows('buckling')
         ];
 
         // --- 9. Batch Process Logic ---
@@ -4348,10 +4577,11 @@
         const ANALYSIS_PARAMETER_KEYS = {
             conf: ['alpha_proportion', 'offset_proportion', 'min_mesh_characteristic_length',
                    'max_mesh_characteristic_length', 'num_cells_cutoff', 'voxel_size_mm',
-                   'visualisation_scale'],
+                   'visualisation_scale', ...STUDY_KEYS.filter(k => k.block === 'conf').map(k => k.key)],
             reg:  ['voxel_size_mm', 'visualisation_scale', 'quadrature_intorder'],
             cg:   ['voxel_size_mm', 'pcg_max_iters', 'pcg_tol', 'pcg_rel_tol',
-                   'warm_start_cg', 'warm_start_max_rho_change', 'warm_start_probe_iters', 'warm_start_min_reduction']
+                   'warm_start_cg', 'warm_start_max_rho_change', 'warm_start_probe_iters', 'warm_start_min_reduction',
+                   ...STUDY_KEYS.filter(k => k.block === 'cg').map(k => k.key)]
         };
         function pruneAnalysisParameters(jsonContent, warnList) {
             const a = jsonContent && jsonContent.analysis;
@@ -4482,9 +4712,10 @@
             return Math.abs(factor.x - factor.y) < 1e-9 && Math.abs(factor.y - factor.z) < 1e-9;
         }
         function eulerXYZDegToRotationMatrix(rxDeg, ryDeg, rzDeg) {
-            // Matches scipy.spatial.transform.Rotation.from_euler('xyz', [...], degrees=True)
-            // as used by problem_parser.py: lowercase 'xyz' is EXTRINSIC (fixed-axis)
-            // composition applied x-then-y-then-z, so the combined matrix is R = Rz . Ry . Rx.
+            // The rotation of THREE.Euler(x, y, z) in its default 'XYZ' order -- how the JSON's
+            // world_rotation_deg is exported and previewed -- and of
+            // scipy.spatial.transform.Rotation.from_euler('XYZ', [...], degrees=True) as used by
+            // problem_parser.py: uppercase 'XYZ' is INTRINSIC, so R = Rx . Ry . Rz.
             const toRad = d => d * Math.PI / 180;
             const ax = toRad(rxDeg), ay = toRad(ryDeg), az = toRad(rzDeg);
             const cx = Math.cos(ax), sx = Math.sin(ax);
@@ -4496,7 +4727,7 @@
             const mul = (A, B) => A.map((row, i) => row.map((_, j) =>
                 A[i][0]*B[0][j] + A[i][1]*B[1][j] + A[i][2]*B[2][j]
             ));
-            return mul(Rz, mul(Ry, Rx));
+            return mul(Rx, mul(Ry, Rz));
         }
 
         // Given a primitive's LOCAL half-extent `oldScale` {x,y,z}, its rotation matrix `R`
@@ -4963,7 +5194,7 @@
                     methodSelect.value = 'pcls';
                     baseProblemDef = getExportableProblemDef();
                     methodSelect.value = shown;
-                    Object.keys(METHOD_PARAMS).forEach(m => { baseProblemDef.optimiser[m] = readMethodBlock(m); });
+                    Object.keys(METHOD_PARAMS).forEach(m => { baseProblemDef.optimiser[m] = readMethodBlock(m, true); });
                 }
                 let keyText = "Hyperparameter Sweep Key\n========================\n\n";
 
